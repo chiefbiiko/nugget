@@ -34,12 +34,11 @@ Resources:
             Principal: !GetAtt
               - OriginAccessIdentity
               - S3CanonicalUserId
-            Resource:
-              Fn::Join:
-                - ""
-                - - "arn:aws:s3:::"
-                  - !Ref WebsiteBucket
-                  - /*
+            Resource: !Join
+              - ""
+              - - "arn:aws:s3:::"
+                - !Ref WebsiteBucket
+                - /*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
     Condition: isAllowedRegion
