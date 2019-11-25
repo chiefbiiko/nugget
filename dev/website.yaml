@@ -11,10 +11,10 @@ Resources:
     Properties:
       AccessControl: Private
       PublicAccessBlockConfiguration:
-         BlockPublicAcls: true
-         IgnorePublicAcls: true
-         BlockPublicPolicy: true
-         RestrictPublicBuckets: true
+        BlockPublicAcls: true
+        IgnorePublicAcls: true
+        BlockPublicPolicy: true
+        RestrictPublicBuckets: true
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Condition: isAllowedRegion
@@ -28,17 +28,15 @@ Resources:
       Bucket: !Ref WebsiteBucket
       PolicyDocument:
         Statement:
-          - Action:
-              - s3:GetObject
+          - Sid: AllowCloudFrontOriginAccessIdentity
             Effect: Allow
-            Principal: !GetAtt
-              - OriginAccessIdentity
-              - S3CanonicalUserId
-            Resource: !Join
-              - ""
-              - - "arn:aws:s3:::"
-                - !Ref WebsiteBucket
-                - /*
+            Principal:
+              CanonicalUser: !GetAtt
+                - OriginAccessIdentity
+                - S3CanonicalUserId
+            Action:
+              - s3:GetObject
+            Resource: !Sub arn:aws:s3:::${!Ref WebsiteBucket}/*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
     Condition: isAllowedRegion
@@ -65,14 +63,7 @@ Resources:
               - DomainName
             Id: WebsiteBucketOrigin
             S3OriginConfig:
-              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${OriginAccessIdentity}"
-                # !Join
-                # - ""
-                # - - origin-access-identity/cloudfront/
-                #   - !GetAtt
-                #     - OriginAccessIdentity
-                #     - Id
-              # origin-access-identity/cloudfront/ID-of-origin-access-identity
+              OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
         PriceClass: PriceClass_100
         # ViewerCertificate:
         #   AcmCertificateArn: ... # arn of our acm certificate
