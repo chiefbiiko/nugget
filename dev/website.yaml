@@ -27,6 +27,7 @@ Resources:
     Properties:
       Bucket: !Ref WebsiteBucket
       PolicyDocument:
+        Version: 2012-10-17
         Statement:
           - Sid: AllowCloudFrontOriginAccessIdentity
             Effect: Allow
@@ -36,7 +37,7 @@ Resources:
                 - S3CanonicalUserId
             Action:
               - s3:GetObject
-            Resource: !Sub arn:aws:s3:::${!Ref WebsiteBucket}/*
+            Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
     Condition: isAllowedRegion
