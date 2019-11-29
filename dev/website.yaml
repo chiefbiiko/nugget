@@ -9,18 +9,22 @@ Resources:
     Type: AWS::S3::Bucket
     Condition: isAllowedRegion
     Properties:
-      AccessControl: Private
+      # AccessControl: Private
+      AccessControl: Public
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        IgnorePublicAcls: true
-        BlockPublicPolicy: true
-        RestrictPublicBuckets: true
+        BlockPublicAcls: false # true
+        IgnorePublicAcls: false # true
+        BlockPublicPolicy: false # true
+        RestrictPublicBuckets: false # true
+      WebsiteConfiguration:
+        ErrorDocument: error.html
+        IndexDocument: index.html
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Condition: isAllowedRegion
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: sesameopen # a comment is required 4 some reason
+        Comment: CloudFrontS3OriginAccessIdentity # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Condition: isAllowedRegion
@@ -29,7 +33,15 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          - Sid: AllowCloudFrontOriginAccessIdentity
+          - Sid: DenyAnythingButCloudFrontS3OriginAccessIdentity
+            Effect: Deny
+            # TODO
+            Condition: TODO
+            Principal: TODO
+            Action:
+              - s3:*
+            Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
+          - Sid: AllowCloudFrontS3OriginAccessIdentity
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt
@@ -55,7 +67,7 @@ Resources:
           MinTTL: 1800 # 1/2h
           TargetOriginId: WebsiteBucketOrigin
           ViewerProtocolPolicy: redirect-to-https
-        DefaultRootObject: index.html
+        # DefaultRootObject: index.html
         Enabled: true
         IPV6Enabled: true
         Origins:
