@@ -16,9 +16,9 @@ Resources:
         IgnorePublicAcls: false # true
         BlockPublicPolicy: false # true
         RestrictPublicBuckets: false # true
-      WebsiteConfiguration:
-        ErrorDocument: error.html
-        IndexDocument: index.html
+      # WebsiteConfiguration:
+      #   ErrorDocument: error.html
+      #   IndexDocument: index.html
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Condition: isAllowedRegion
