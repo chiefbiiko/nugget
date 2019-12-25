@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: website distribution using a totally private s3 bucket
+Description: website distribution
 Conditions:
   isAllowedRegion: !Equals
     - !Ref AWS::Region
@@ -7,11 +7,10 @@ Conditions:
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
-    Name: nugget-website
     Condition: isAllowedRegion
     Properties:
       # AccessControl: Private
-      AccessControl: Public
+      AccessControl: PublicRead
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false # true
         IgnorePublicAcls: false # true
