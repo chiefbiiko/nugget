@@ -8,23 +8,24 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Condition: inAllowedRegion
-    Properties:
-      # AccessControl: Private
-      AccessControl: PublicRead
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false # true
-        IgnorePublicAcls: false # true
-        BlockPublicPolicy: false # true
-        RestrictPublicBuckets: false # true
-      WebsiteConfiguration:
-        ErrorDocument: error.html
-        IndexDocument: index.html
+    # TODO: Allow OAI in bucket ACL
+    # Properties:
+    #   # AccessControl: Private
+    #   AccessControl: PublicRead
+    #   PublicAccessBlockConfiguration:
+    #     BlockPublicAcls: false # true
+    #     IgnorePublicAcls: false # true
+    #     BlockPublicPolicy: false # true
+    #     RestrictPublicBuckets: false # true
+    #   WebsiteConfiguration:
+    #     ErrorDocument: error.html
+    #     IndexDocument: index.html
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Condition: inAllowedRegion
     Properties:
       CloudFrontOriginAccessIdentityConfig:
-        Comment: CloudFrontS3OriginAccessIdentity # required 4 some reason
+        Comment: CFS3OAI # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Condition: inAllowedRegion
@@ -42,7 +43,7 @@ Resources:
           #   Action:
           #     - s3:*
           #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
-          - Sid: AllowCloudFrontS3OriginAccessIdentity
+          - Sid: AllowOAI2GetIndexHtml
           # - Sid: AllowPublicReadAccess
             Effect: Allow
             Principal:
@@ -79,8 +80,8 @@ Resources:
         Enabled: true
         IPV6Enabled: true
         Origins:
-          # - DomainName: !GetAtt WebsiteBucket.DomainName
-          - DomainName: !Sub ${!GetAtt WebsiteBucket.Name}.s3-website.${AWS::Region}.amazonaws.com/
+          - DomainName: !GetAtt WebsiteBucket.DomainName
+          # - DomainName: !Sub ${!GetAtt WebsiteBucket.Name}.s3-website.${AWS::Region}.amazonaws.com/
             Id: WebsiteBucketOrigin
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
