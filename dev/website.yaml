@@ -1,17 +1,15 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: website distribution
-# Conditions:
-#   inAllowedRegion: !Equals
-#     - !Ref AWS::Region
-#     - eu-west-3 # paris
+Description: Website distribution stack with a private S3 bucket
+Parameters:
+  TargetOriginId:
+    Type: String
+    Default: WebsiteBucketOrigin
+    Description: Id for the target S3 origin of the CloudFront distribution
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
-    Properties:
-      CloudFrontOriginAccessIdentityConfig:
-        Comment: CFS3OAI # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -19,7 +17,7 @@ Resources:
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          - Sid: AllowCFS3OAI
+          - Sid: AllowOriginAccessIdentity
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
@@ -50,14 +48,14 @@ Resources:
             QueryString: false
           MaxTTL: 7200 # 2h
           MinTTL: 1800 # 1/2h
-          TargetOriginId: WebsiteBucketOrigin
+          TargetOriginId: !Ref TargetOriginId
           ViewerProtocolPolicy: redirect-to-https
         DefaultRootObject: index.html
         Enabled: true
         IPV6Enabled: true
         Origins:
           - DomainName: !GetAtt WebsiteBucket.DomainName
-            Id: WebsiteBucketOrigin
+            Id: !Ref TargetOriginId
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
         PriceClass: PriceClass_100
