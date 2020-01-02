@@ -8,15 +8,14 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Condition: inAllowedRegion
-    # TRYIN: Allow OAI in bucket ACL
-    Properties:
-    #   # AccessControl: Private
-      AccessControl: PublicRead
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: false # true
-        IgnorePublicAcls: false # true
-        BlockPublicPolicy: false # true
-        RestrictPublicBuckets: false # true
+    # Properties:
+    #   AccessControl: Private
+      # AccessControl: PublicRead
+      # PublicAccessBlockConfiguration:
+      #   BlockPublicAcls: false # true
+      #   IgnorePublicAcls: false # true
+      #   BlockPublicPolicy: false # true
+      #   RestrictPublicBuckets: false # true
     #   WebsiteConfiguration:
     #     ErrorDocument: error.html
     #     IndexDocument: index.html
@@ -43,21 +42,17 @@ Resources:
           #   Action:
           #     - s3:*
           #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
-          - Sid: DenyAnythingButOAI
-          # - Sid: AllowPublicReadAccess
-            Effect: Deny
-            NotPrincipal:
-              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-              # AWS: "*"
-            Action:
-              - s3:GetObject
-            Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
+          # - Sid: DenyAnythingButOAI
+          #   Effect: Deny
+          #   NotPrincipal:
+          #     CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
+          #   Action:
+          #     - s3:GetObject
+          #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
           - Sid: AllowOAI
-          # - Sid: AllowPublicReadAccess
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-              # AWS: "*"
             Action:
               - s3:GetObject
             Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
