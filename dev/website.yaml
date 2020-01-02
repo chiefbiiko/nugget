@@ -8,10 +8,10 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Condition: inAllowedRegion
-    # TODO: Allow OAI in bucket ACL
+    # TRYIN: Allow OAI in bucket ACL
     # Properties:
     #   # AccessControl: Private
-    #   AccessControl: PublicRead
+      AccessControl: PublicRead
     #   PublicAccessBlockConfiguration:
     #     BlockPublicAcls: false # true
     #     IgnorePublicAcls: false # true
@@ -76,7 +76,7 @@ Resources:
           MinTTL: 1800 # 1/2h
           TargetOriginId: WebsiteBucketOrigin
           ViewerProtocolPolicy: redirect-to-https
-        # DefaultRootObject: index.html
+        DefaultRootObject: index.html
         Enabled: true
         IPV6Enabled: true
         Origins:
