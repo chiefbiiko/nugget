@@ -1,6 +1,22 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Website distribution stack with a private S3 bucket
 Parameters:
+  DefaultTTL:
+    Type: Number
+    Default: 3600 # 1h
+    Description: Default cache object TTL
+  MaxTTL:
+    Type: Number
+    Default: 7200 # 2h
+    Description: Maximum cache object TTL
+  MinTTL:
+    Type: Number
+    Default: 1800 # 1/2h
+    Description: Minimum cache object TTL
+  DefaultRootObject:
+    Type: String
+    Default: index.html
+    Description: Default root object name used by the CloudFront distribution
   TargetOriginId:
     Type: String
     Default: WebsiteBucketOrigin
@@ -44,16 +60,16 @@ Resources:
             - HEAD
             - OPTIONS
           Compress: true
-          DefaultTTL: 3600 # 1h
+          DefaultTTL: !Ref DefaultTTL
           ForwardedValues:
             Cookies:
               Forward: none
             QueryString: false
-          MaxTTL: 7200 # 2h
-          MinTTL: 1800 # 1/2h
+          MaxTTL: !Ref MaxTTL
+          MinTTL: !Ref MinTTL
           TargetOriginId: !Ref TargetOriginId
           ViewerProtocolPolicy: redirect-to-https
-        DefaultRootObject: index.html
+        DefaultRootObject: !Ref DefaultRootObject
         Enabled: true
         IPV6Enabled: true
         Origins:
