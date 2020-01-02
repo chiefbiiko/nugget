@@ -49,13 +49,16 @@ Resources:
           #   Action:
           #     - s3:GetObject
           #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
-          - Sid: AllowOAI
+          - Sid: AllowCFS3OAI
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
             Action:
-              - s3:GetObject
-            Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub arn:aws:s3:::${WebsiteBucket}
+              - !Sub arn:aws:s3:::${WebsiteBucket}/*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
     Condition: inAllowedRegion
