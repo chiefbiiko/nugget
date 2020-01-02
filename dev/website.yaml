@@ -12,11 +12,11 @@ Resources:
     Properties:
     #   # AccessControl: Private
       AccessControl: PublicRead
-    #   PublicAccessBlockConfiguration:
-    #     BlockPublicAcls: false # true
-    #     IgnorePublicAcls: false # true
-    #     BlockPublicPolicy: false # true
-    #     RestrictPublicBuckets: false # true
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false # true
+        IgnorePublicAcls: false # true
+        BlockPublicPolicy: false # true
+        RestrictPublicBuckets: false # true
     #   WebsiteConfiguration:
     #     ErrorDocument: error.html
     #     IndexDocument: index.html
