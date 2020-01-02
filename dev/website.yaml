@@ -9,7 +9,7 @@ Resources:
     Type: AWS::S3::Bucket
     Condition: inAllowedRegion
     # TRYIN: Allow OAI in bucket ACL
-    # Properties:
+    Properties:
     #   # AccessControl: Private
       AccessControl: PublicRead
     #   PublicAccessBlockConfiguration:
