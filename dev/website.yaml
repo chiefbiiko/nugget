@@ -1,13 +1,13 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: website distribution
 Conditions:
-  isAllowedRegion: !Equals
+  inAllowedRegion: !Equals
     - !Ref AWS::Region
     - eu-west-3 # paris
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
-    Condition: isAllowedRegion
+    Condition: inAllowedRegion
     Properties:
       # AccessControl: Private
       AccessControl: PublicRead
@@ -21,13 +21,13 @@ Resources:
       #   IndexDocument: index.html
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
-    Condition: isAllowedRegion
+    Condition: inAllowedRegion
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CloudFrontS3OriginAccessIdentity # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
-    Condition: isAllowedRegion
+    Condition: inAllowedRegion
     Properties:
       Bucket: !Ref WebsiteBucket
       PolicyDocument:
@@ -45,36 +45,39 @@ Resources:
           - Sid: AllowCloudFrontS3OriginAccessIdentity
             Effect: Allow
             Principal:
-              CanonicalUser: !GetAtt
-                - OriginAccessIdentity
-                - S3CanonicalUserId
+              CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
             Action:
               - s3:*
             Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
-    Condition: isAllowedRegion
+    Condition: inAllowedRegion
     Properties:
       DistributionConfig:
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
             - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
           Compress: true
           DefaultTTL: 3600 # 1h
           ForwardedValues:
+            Cookies:
+              Forward: none
             QueryString: false
           MaxTTL: 7200 # 2h
           MinTTL: 1800 # 1/2h
           TargetOriginId: WebsiteBucketOrigin
-          ViewerProtocolPolicy: redirect-to-https
+          # ViewerProtocolPolicy: redirect-to-https
+          ViewerProtocolPolicy: allow-all
         DefaultRootObject: index.html
         Enabled: true
         IPV6Enabled: true
         Origins:
-          - DomainName: !GetAtt
-              - WebsiteBucket
-              - DomainName
+          - DomainName: !GetAtt WebsiteBucket.DomainName
           # - DomainName: !Sub ${!GetAtt WebsiteBucket.Name}.s3-website.${AWS::Region}.amazonaws.com/
             Id: WebsiteBucketOrigin
             S3OriginConfig:
