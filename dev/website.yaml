@@ -1,54 +1,24 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: website distribution
-Conditions:
-  inAllowedRegion: !Equals
-    - !Ref AWS::Region
-    - eu-west-3 # paris
+# Conditions:
+#   inAllowedRegion: !Equals
+#     - !Ref AWS::Region
+#     - eu-west-3 # paris
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
-    Condition: inAllowedRegion
-    # Properties:
-    #   AccessControl: Private
-      # AccessControl: PublicRead
-      # PublicAccessBlockConfiguration:
-      #   BlockPublicAcls: false # true
-      #   IgnorePublicAcls: false # true
-      #   BlockPublicPolicy: false # true
-      #   RestrictPublicBuckets: false # true
-    #   WebsiteConfiguration:
-    #     ErrorDocument: error.html
-    #     IndexDocument: index.html
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
-    Condition: inAllowedRegion
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CFS3OAI # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
-    Condition: inAllowedRegion
     Properties:
       Bucket: !Ref WebsiteBucket
       PolicyDocument:
         Version: 2012-10-17
         Statement:
-          # - Sid: DenyAnythingButCloudFrontS3OriginAccessIdentity
-          #   Effect: Deny
-          #   NotPrincipal: 
-          #     CanonicalUser: !GetAtt
-          #       - OriginAccessIdentity
-          #       - S3CanonicalUserId
-          #   Action:
-          #     - s3:*
-          #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
-          # - Sid: DenyAnythingButOAI
-          #   Effect: Deny
-          #   NotPrincipal:
-          #     CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-          #   Action:
-          #     - s3:GetObject
-          #   Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
           - Sid: AllowCFS3OAI
             Effect: Allow
             Principal:
@@ -61,7 +31,6 @@ Resources:
               - !Sub arn:aws:s3:::${WebsiteBucket}/*
   WebsiteDistribution:
     Type: AWS::CloudFront::Distribution
-    Condition: inAllowedRegion
     Properties:
       DistributionConfig:
         DefaultCacheBehavior:
@@ -88,7 +57,6 @@ Resources:
         IPV6Enabled: true
         Origins:
           - DomainName: !GetAtt WebsiteBucket.DomainName
-          # - DomainName: !Sub ${!GetAtt WebsiteBucket.Name}.s3-website.${AWS::Region}.amazonaws.com/
             Id: WebsiteBucketOrigin
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
@@ -100,5 +68,3 @@ Resources:
 Outputs:
   DistributionURL:
     Value: !GetAtt WebsiteDistribution.DomainName
-  # WebsiteEndpoint:
-  #   Value: !Sub ${!GetAtt WebsiteBucket.Name}.s3-website.${AWS::Region}.amazonaws.com/
