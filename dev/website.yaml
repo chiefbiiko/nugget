@@ -52,7 +52,7 @@ Resources:
             Action:
               - s3:GetObject
             Resource: !Sub arn:aws:s3:::${WebsiteBucket}/*
-          - Sid: AllowOAI2GetIndexHtml
+          - Sid: AllowOAI
           # - Sid: AllowPublicReadAccess
             Effect: Allow
             Principal:
