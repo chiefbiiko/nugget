@@ -10,6 +10,9 @@ Resources:
     Type: AWS::S3::Bucket
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: CFS3OAI # required 4 some reason
   WebsiteBucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
