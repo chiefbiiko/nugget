@@ -1,6 +1,29 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Website distribution stack with a private S3 bucket
+Description: |
+  Simple but complete website distribution stack 
+  Prerequisites: a Route53 domain plus its Hosted Zone ID
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label: 
+        default: DNS
+      Parameters:
+        - Domain
+        - HostedZoneID
+    - Label: 
+        default: Distribution Config
+      Parameters:
+        - DefaultRootObject
+        - DefaultTTL
+        - MaxTTL
+        - MinTTL
 Parameters:
+  Domain:
+    Description: The domain of your website
+    Type: String
+  HostedZoneID:
+    Description: The ID of your hosted zone in Route 53
+    Type: AWS::Route53::HostedZone::Id
   DefaultTTL:
     Type: Number
     Default: 3600 # 1h
@@ -16,11 +39,7 @@ Parameters:
   DefaultRootObject:
     Type: String
     Default: index.html
-    Description: Default root object name used by the CloudFront distribution
-  TargetOriginId:
-    Type: String
-    Default: WebsiteBucketOrigin
-    Description: Id for the target S3 origin of the CloudFront distribution
+    Description: Default root object path used by the CloudFront distribution
 Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
@@ -50,6 +69,8 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
+        Aliases:
+          - !Ref Domain
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -67,21 +88,48 @@ Resources:
             QueryString: false
           MaxTTL: !Ref MaxTTL
           MinTTL: !Ref MinTTL
-          TargetOriginId: !Ref TargetOriginId
+          TargetOriginId: WebsiteBucketOrigin
           ViewerProtocolPolicy: redirect-to-https
         DefaultRootObject: !Ref DefaultRootObject
         Enabled: true
-        IPV6Enabled: true
+        # routing ipv6 traffic from Route53 to CloudFront would require an AAAA 
+        # alias record which carries along extra cost
+        IPV6Enabled: false
         Origins:
           - DomainName: !GetAtt WebsiteBucket.DomainName
-            Id: !Ref TargetOriginId
+            Id: WebsiteBucketOrigin
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
         PriceClass: PriceClass_100
-        # ViewerCertificate:
-        #   AcmCertificateArn: ... # arn of our acm certificate
-        #   MinimumProtocolVersion: TLSv1.2_2018
-        #   SSLSupportMethod: sni-only
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ACMCertificate
+          MinimumProtocolVersion: TLSv1.2_2018
+          SSLSupportMethod: sni-only
+  Route53RecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneID
+      Name: !Ref Domain
+      Type: A
+      AliasTarget:
+        HostedZoneId: Z2FDTNDATAQYW2 # This Zone ID is used for any CloudFront Distribution
+        DNSName: !GetAtt WebsiteDistribution.DomainName
+  ACMCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref Domain
+      ValidationMethod: DNS
 Outputs:
-  DistributionURL:
+  AcmCertificateArn: 
+    Value: !Ref ACMCertificate
+  WebsiteBucketName:
+    Description: S3 Bucket Name
+    Value: !Ref WebsiteBucket
+  DistributionDomainName:
     Value: !GetAtt WebsiteDistribution.DomainName
+  URL:
+    Description: URL of your website
+    Value: !If
+      - ShouldCreateCert
+      - !Sub https://${Domain}
+      - !Sub http://${Domain}
