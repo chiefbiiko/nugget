@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Simple but complete website distribution stack 
-  Prerequisites: a Route53 domain plus its Hosted Zone ID
+  Prerequisites: a Route53 domain plus its hosted zone id
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -41,17 +41,17 @@ Parameters:
     Default: index.html
     Description: Default root object path used by the CloudFront distribution
 Resources:
-  WebsiteBucket:
+  Bucket:
     Type: AWS::S3::Bucket
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CFS3OAI # required 4 some reason
-  WebsiteBucketPolicy:
+  BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
-      Bucket: !Ref WebsiteBucket
+      Bucket: !Ref Bucket
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -63,9 +63,9 @@ Resources:
               - s3:Get*
               - s3:List*
             Resource:
-              - !Sub arn:aws:s3:::${WebsiteBucket}
-              - !Sub arn:aws:s3:::${WebsiteBucket}/*
-  WebsiteDistribution:
+              - !Sub arn:aws:s3:::${Bucket}
+              - !Sub arn:aws:s3:::${Bucket}/*
+  Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -88,7 +88,7 @@ Resources:
             QueryString: false
           MaxTTL: !Ref MaxTTL
           MinTTL: !Ref MinTTL
-          TargetOriginId: WebsiteBucketOrigin
+          TargetOriginId: BucketOrigin
           ViewerProtocolPolicy: redirect-to-https
         DefaultRootObject: !Ref DefaultRootObject
         Enabled: true
@@ -96,16 +96,16 @@ Resources:
         # alias record which carries along extra cost
         IPV6Enabled: false
         Origins:
-          - DomainName: !GetAtt WebsiteBucket.DomainName
-            Id: WebsiteBucketOrigin
+          - DomainName: !GetAtt Bucket.DomainName
+            Id: BucketOrigin
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
         PriceClass: PriceClass_100
         ViewerCertificate:
-          AcmCertificateArn: !Ref ACMCertificate
+          AcmCertificateArn: !Ref Certificate
           MinimumProtocolVersion: TLSv1.2_2018
           SSLSupportMethod: sni-only
-  Route53RecordSet:
+  RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -114,20 +114,20 @@ Resources:
       AliasTarget:
         # Below zone id is used for any CloudFront Distribution
         HostedZoneId: Z2FDTNDATAQYW2
-        DNSName: !GetAtt WebsiteDistribution.DomainName
-  ACMCertificate:
+        DNSName: !GetAtt Distribution.DomainName
+  Certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
       DomainName: !Ref Domain
       ValidationMethod: DNS
 Outputs:
-  AcmCertificateArn: 
-    Value: !Ref ACMCertificate
-  WebsiteBucketName:
+  CertificateArn: 
+    Value: !Ref Certificate
+  BucketName:
     Description: S3 Bucket Name
-    Value: !Ref WebsiteBucket
+    Value: !Ref Bucket
   DistributionDomainName:
-    Value: !GetAtt WebsiteDistribution.DomainName
+    Value: !GetAtt Distribution.DomainName
   URL:
     Description: URL of your website
     Value: !Sub https://${Domain}
