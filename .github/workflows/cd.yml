@@ -10,10 +10,10 @@ on:
       - "**/cd.yml"
 env:
   BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
-  _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', $BRANCH) }}
-  _AWS_SECRET_ACCESS_KEY: ${{ format('AWS_SECRET_ACCESS_KEY_{0}', $BRANCH) }}
-  _AWS_CLOUDFORMATION_STACK_NAME: ${{ format('AWS_CLOUDFORMATION_STACK_NAME_{0}', $BRANCH) }}
-  _AWS_S3_BUCKET_NAME: ${{ format('AWS_S3_BUCKET_NAME_{0}', $BRANCH) }}
+  _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', $(tr a-z A-Z <<< ${GITHUB_REF##*/})) }}
+  _AWS_SECRET_ACCESS_KEY: ${{ format('AWS_SECRET_ACCESS_KEY_{0}', $(tr a-z A-Z <<< ${GITHUB_REF##*/})) }}
+  _AWS_CLOUDFORMATION_STACK_NAME: ${{ format('AWS_CLOUDFORMATION_STACK_NAME_{0}', $(tr a-z A-Z <<< ${GITHUB_REF##*/})) }}
+  _AWS_S3_BUCKET_NAME: ${{ format('AWS_S3_BUCKET_NAME_{0}', $(tr a-z A-Z <<< ${GITHUB_REF##*/})) }}
 jobs:
   test:
     name: deploy $BRANCH environment to aws
