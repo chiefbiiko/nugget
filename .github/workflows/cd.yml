@@ -7,7 +7,7 @@ on:
     paths:
       - index.html
       - stack.yml
-      - "**/cd.yml"
+      - .github/workflows/cd.yml
 env:
   BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
   # _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH) }}
@@ -21,12 +21,18 @@ jobs:
     steps:
       - name: clone repo
         uses: actions/checkout@v1.0.0
+      - name: enrich env
+        run: |
+          echo "::set-env name=_AWS_ACCESS_KEY_ID::AWS_ACCESS_KEY_ID_$BRANCH"
+          echo "::set-env name=_AWS_SECRET_ACCESS_KEY::AWS_SECRET_ACCESS_KEY_$BRANCH"
+          echo "::set-env name=_AWS_CLOUDFORMATION_STACK_NAME::AWS_CLOUDFORMATION_STACK_NAME_$BRANCH"
+          echo "::set-env name=_AWS_S3_BUCKET_NAME::AWS_S3_BUCKET_NAME_$BRANCH"
       # aws-cli comes bundled in github actions
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets[format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH)] }}
-          aws-secret-access-key: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.BRANCH)] }}
+          aws-access-key-id: ${{ secrets[env._AWS_ACCESS_KEY_ID] }}
+          aws-secret-access-key: ${{ secrets[env._AWS_SECRET_ACCESS_KEY] }}
           aws-region: eu-west-3
       - name: validate the cloudformation template
         run: |
@@ -35,7 +41,7 @@ jobs:
       - name: update the cloudformation stack
         run: |
           aws cloudformation update-stack \
-            --stack-name=${{ secrets[format('AWS_CLOUDFORMATION_STACK_NAME_{0}', env.BRANCH)] }} \
+            --stack-name=${{ secrets[env._AWS_CLOUDFORMATION_STACK_NAME] }} \
             --template-body="$(cat ./stack.yml)"
       - name: update s3 bucket with index.html
-        run: aws s3 copy ./index.html s3://${{ secrets[format('AWS_S3_BUCKET_NAME_{0}', env.BRANCH)] }}
+        run: aws s3 copy ./index.html s3://${{ secrets[env._AWS_S3_BUCKET_NAME] }}
