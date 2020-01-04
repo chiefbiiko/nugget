@@ -6,7 +6,7 @@ on:
       - master
     paths:
       - index.html
-      - stack.yml'
+      - stack.yml
 env:
   BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
   _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH) }}
