@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Website distribution stack #using a Route53 domain
 Metadata:
-  'AWS::CloudFormation::Interface':
+  "AWS::CloudFormation::Interface":
     ParameterGroups:
       # - Label: 
       #     default: DNS
@@ -17,17 +17,17 @@ Parameters:
   #   Description: Route53 hosted zone id
   #   Type: AWS::Route53::HostedZone::Id
   DefaultTTL:
-    Description: Default cache object TTL
+    Description: Default cache object TTL - default 1h
     Type: Number
-    Default: 3600 # 1h
+    Default: 3600
   MaxTTL:
-    Description: Maximum cache object TTL
+    Description: Maximum cache object TTL - default 2h
     Type: Number
-    Default: 7200 # 2h
+    Default: 7200
   MinTTL:
-    Description: Minimum cache object TTL
+    Description: Minimum cache object TTL - default 1/2h
     Type: Number
-    Default: 1800 # 1/2h
+    Default: 1800
   DefaultRootObject:
     Description: Default root object path used by the CloudFront distribution
     Type: String
@@ -51,8 +51,8 @@ Resources:
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-            Action: [s3:Get*, s3:List*]
-            Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]  
+            Action: ["s3:Get*", "s3:List*"]
+            Resource: [!Sub "arn:aws:s3:::${Bucket}", !Sub "arn:aws:s3:::${Bucket}/*"]  
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -112,7 +112,7 @@ Resources:
               - Sid: AllowBucketAdministration
                 Effect: Allow
                 Action: s3:*
-                Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]
+                Resource: [!Sub "arn:aws:s3:::${Bucket}", !Sub "arn:aws:s3:::${Bucket}/*"]
               - Sid: AllowStackAdministration
                 Effect: Allow
                 Action: cloudformation:*
