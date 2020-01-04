@@ -28,13 +28,13 @@ jobs:
           aws-secret-access-key: ${{ secrets[env._AWS_SECRET_ACCESS_KEY] }}
           aws-region: eu-west-3
       - name: validate the cloudformation template
-        runs: |
+        run: |
           aws cloudformation validate-template \
             --template-body="$(cat ./stack.yml)"
       - name: update the cloudformation stack
-        runs: |
+        run: |
           aws cloudformation update-stack \
             --stack-name=${{ secrets[env._AWS_CLOUDFORMATION_STACK_NAME] }} \
             --template-body="$(cat ./stack.yml)"
       - name: update s3 bucket with index.html
-        runs: aws s3 copy ./index.html s3://${{ secrets[env._AWS_S3_BUCKET_NAME] }}
+        run: aws s3 copy ./index.html s3://${{ secrets[env._AWS_S3_BUCKET_NAME] }}
