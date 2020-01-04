@@ -1,46 +1,43 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: |
-  Simple but complete website distribution stack 
-  Prerequisites: a Route53 domain plus its hosted zone id
+
+Description: Website distribution stack using a Route53 domain
+  
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
-    - Label: 
-        default: DNS
-      Parameters:
-        - Domain
-        - HostedZoneId
-    - Label: 
-        default: Distribution Config
-      Parameters:
-        - DefaultRootObject
-        - DefaultTTL
-        - MaxTTL
-        - MinTTL
+      - Label: 
+          default: DNS
+        Parameters: [Domain, HostedZoneId]
+      - Label: 
+          default: CDN
+        Parameters: [DefaultRootObject, DefaultTTL, MaxTTL, MinTTL]
+
 Parameters:
   Domain:
-    Description: The domain of your website
+    Description: Route53 domain fx example.com
     Type: String
   HostedZoneId:
-    Description: The id of your hosted zone in Route 53
+    Description: Route53 hosted zone id
     Type: AWS::Route53::HostedZone::Id
   DefaultTTL:
+    Description: Default cache object TTL
     Type: Number
     Default: 3600 # 1h
-    Description: Default cache object TTL
   MaxTTL:
+    Description: Maximum cache object TTL
     Type: Number
     Default: 7200 # 2h
-    Description: Maximum cache object TTL
   MinTTL:
+    Description: Minimum cache object TTL
     Type: Number
     Default: 1800 # 1/2h
-    Description: Minimum cache object TTL
   DefaultRootObject:
+    Description: Default root object path used by the CloudFront distribution
     Type: String
     Default: index.html
-    Description: Default root object path used by the CloudFront distribution
+
 Resources:
+  
   Bucket:
     Type: AWS::S3::Bucket
   OriginAccessIdentity:
@@ -48,6 +45,7 @@ Resources:
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CFS3OAI # required 4 some reason
+  
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -59,12 +57,9 @@ Resources:
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-            Action:
-              - s3:Get*
-              - s3:List*
-            Resource:
-              - !Sub arn:aws:s3:::${Bucket}
-              - !Sub arn:aws:s3:::${Bucket}/*
+            Action: [s3:Get*, s3:List*]
+            Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]
+  
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -72,14 +67,8 @@ Resources:
         Aliases:
           - !Ref Domain
         DefaultCacheBehavior:
-          AllowedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
-          CachedMethods:
-            - GET
-            - HEAD
-            - OPTIONS
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
           Compress: true
           DefaultTTL: !Ref DefaultTTL
           ForwardedValues:
@@ -105,6 +94,7 @@ Resources:
           AcmCertificateArn: !Ref Certificate
           MinimumProtocolVersion: TLSv1.2_2018
           SSLSupportMethod: sni-only
+  
   RecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
@@ -115,11 +105,15 @@ Resources:
         # Below zone id is used for any CloudFront Distribution
         HostedZoneId: Z2FDTNDATAQYW2
         DNSName: !GetAtt Distribution.DomainName
+  
   Certificate:
     Type: AWS::CertificateManager::Certificate
     Properties:
       DomainName: !Ref Domain
       ValidationMethod: DNS
+  
+  
+  
 Outputs:
   CertificateArn: 
     Value: !Ref Certificate
