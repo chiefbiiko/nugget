@@ -118,6 +118,9 @@ Resources:
                 Action: cloudformation:*
                 Resource: !Ref AWS::StackId
 Outputs:
+  StackName:
+    Description: CloudFormation stack name
+    Value: !Ref AWS::StackName
   BucketName:
     Description: S3 bucket name
     Value: !Ref Bucket
