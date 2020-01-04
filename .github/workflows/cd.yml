@@ -1,4 +1,3 @@
-# TODO: fetch secrets by environment name!!!
 name: cd
 on:
   push:
@@ -7,9 +6,13 @@ on:
       - master
     paths:
       - index.html
-      - **/stack.yml
+      - stack.yml'
 env:
-  BRANCH: ${GITHUB_REF##*/}
+  BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
+  _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH) }}
+  _AWS_SECRET_ACCESS_KEY: ${{ format('AWS_SECRET_ACCESS_KEY_{0}', env.BRANCH) }}
+  _AWS_CLOUDFORMATION_STACK_NAME: ${{ format('AWS_CLOUDFORMATION_STACK_NAME_{0}', env.BRANCH) }}
+  _AWS_S3_BUCKET_NAME: ${{ format('AWS_S3_BUCKET_NAME_{0}', env.BRANCH) }}
 jobs:
   test:
     name: deploy $BRANCH environment to aws
@@ -21,13 +24,17 @@ jobs:
       - name: configure aws credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets[env._AWS_ACCESS_KEY_ID] }}
+          aws-secret-access-key: ${{ secrets[env._AWS_SECRET_ACCESS_KEY] }}
           aws-region: eu-west-3
+      - name: validate the cloudformation template
+        runs: |
+          aws cloudformation validate-template \
+            --template-body="$(cat ./stack.yml)"
       - name: update the cloudformation stack
         runs: |
           aws cloudformation update-stack \
-            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME }} \
-            --template-body="$(cat ./$BRANCH/stack.yml)"
+            --stack-name=${{ secrets[env._AWS_CLOUDFORMATION_STACK_NAME] }} \
+            --template-body="$(cat ./stack.yml)"
       - name: update s3 bucket with index.html
-        runs: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME }}
+        runs: aws s3 copy ./index.html s3://${{ secrets._AWS_S3_BUCKET_NAME }}
