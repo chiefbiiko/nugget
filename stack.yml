@@ -5,10 +5,16 @@ Metadata:
     ParameterGroups:
       # - Label: 
       #     default: DNS
-      #   Parameters: [Domain, HostedZoneId]
+      #   Parameters: 
+      #     - Domain
+      #     - HostedZoneId
       - Label: 
           default: CDN
-        Parameters: [DefaultRootObject, DefaultTTL, MaxTTL, MinTTL]
+        Parameters:
+          - DefaultRootObject
+          - DefaultTTL
+          - MaxTTL
+          - MinTTL
 Parameters:
   # Domain:
   #   Description: Route53 domain fx example.com
@@ -51,16 +57,26 @@ Resources:
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-            Action: ["s3:Get*", "s3:List*"]
-            Resource: [!Sub "arn:aws:s3:::${Bucket}", !Sub "arn:aws:s3:::${Bucket}/*"]  
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub arn:aws:s3:::${Bucket}
+              - !Sub arn:aws:s3:::${Bucket}/*
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         # Aliases: [!Ref Domain]
         DefaultCacheBehavior:
-          AllowedMethods: [GET, HEAD, OPTIONS]
-          CachedMethods: [GET, HEAD, OPTIONS]
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
           Compress: true
           DefaultTTL: !Ref DefaultTTL
           ForwardedValues:
@@ -112,7 +128,9 @@ Resources:
               - Sid: AllowBucketAdministration
                 Effect: Allow
                 Action: s3:*
-                Resource: [!Sub "arn:aws:s3:::${Bucket}", !Sub "arn:aws:s3:::${Bucket}/*"]
+                Resource:
+                  - !Sub arn:aws:s3:::${Bucket}
+                  - !Sub arn:aws:s3:::${Bucket}/*
               - Sid: AllowStackAdministration
                 Effect: Allow
                 Action: cloudformation:*
