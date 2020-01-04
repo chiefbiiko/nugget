@@ -1,24 +1,21 @@
 AWSTemplateFormatVersion: 2010-09-09
-
-Description: Website distribution stack using a Route53 domain
-  
+Description: Website distribution stack #using a Route53 domain
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
-      - Label: 
-          default: DNS
-        Parameters: [Domain, HostedZoneId]
+      # - Label: 
+      #     default: DNS
+      #   Parameters: [Domain, HostedZoneId]
       - Label: 
           default: CDN
         Parameters: [DefaultRootObject, DefaultTTL, MaxTTL, MinTTL]
-
 Parameters:
-  Domain:
-    Description: Route53 domain fx example.com
-    Type: String
-  HostedZoneId:
-    Description: Route53 hosted zone id
-    Type: AWS::Route53::HostedZone::Id
+  # Domain:
+  #   Description: Route53 domain fx example.com
+  #   Type: String
+  # HostedZoneId:
+  #   Description: Route53 hosted zone id
+  #   Type: AWS::Route53::HostedZone::Id
   DefaultTTL:
     Description: Default cache object TTL
     Type: Number
@@ -35,9 +32,7 @@ Parameters:
     Description: Default root object path used by the CloudFront distribution
     Type: String
     Default: index.html
-
 Resources:
-  
   Bucket:
     Type: AWS::S3::Bucket
   OriginAccessIdentity:
@@ -45,7 +40,6 @@ Resources:
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CFS3OAI # required 4 some reason
-  
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -58,14 +52,12 @@ Resources:
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
             Action: [s3:Get*, s3:List*]
-            Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]
-  
+            Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]  
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        Aliases:
-          - !Ref Domain
+        # Aliases: [!Ref Domain]
         DefaultCacheBehavior:
           AllowedMethods: [GET, HEAD, OPTIONS]
           CachedMethods: [GET, HEAD, OPTIONS]
@@ -90,38 +82,54 @@ Resources:
             S3OriginConfig:
               OriginAccessIdentity: !Sub origin-access-identity/cloudfront/${OriginAccessIdentity}
         PriceClass: PriceClass_100
-        ViewerCertificate:
-          AcmCertificateArn: !Ref Certificate
-          MinimumProtocolVersion: TLSv1.2_2018
-          SSLSupportMethod: sni-only
-  
-  RecordSet:
-    Type: AWS::Route53::RecordSet
+  #       ViewerCertificate:
+  #         AcmCertificateArn: !Ref Certificate
+  #         MinimumProtocolVersion: TLSv1.2_2018
+  #         SSLSupportMethod: sni-only
+  # RecordSet:
+  #   Type: AWS::Route53::RecordSet
+  #   Properties:
+  #     HostedZoneId: !Ref HostedZoneId
+  #     Name: !Ref Domain
+  #     Type: A
+  #     AliasTarget:
+  #       # Below zone id is used for any CloudFront Distribution
+  #       HostedZoneId: Z2FDTNDATAQYW2
+  #       DNSName: !GetAtt Distribution.DomainName
+  # Certificate:
+  #   Type: AWS::CertificateManager::Certificate
+  #   Properties:
+  #     DomainName: !Ref Domain
+  #     ValidationMethod: DNS
+  User:
+    Type: AWS::IAM::User
     Properties:
-      HostedZoneId: !Ref HostedZoneId
-      Name: !Ref Domain
-      Type: A
-      AliasTarget:
-        # Below zone id is used for any CloudFront Distribution
-        HostedZoneId: Z2FDTNDATAQYW2
-        DNSName: !GetAtt Distribution.DomainName
-  
-  Certificate:
-    Type: AWS::CertificateManager::Certificate
-    Properties:
-      DomainName: !Ref Domain
-      ValidationMethod: DNS
-  
-  
-  
+      Policies:
+        - PolicyName: WebStackDeploymentPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowBucketAdministration
+                Effect: Allow
+                Action: s3:*
+                Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]
+              - Sid: AllowStackAdministration
+                Effect: Allow
+                Action: cloudformation:*
+                Resource: !Ref AWS::StackId
 Outputs:
-  CertificateArn: 
-    Value: !Ref Certificate
   BucketName:
-    Description: S3 Bucket Name
+    Description: S3 bucket name
     Value: !Ref Bucket
   DistributionDomainName:
+    Description: CloudFront distribution domain name
     Value: !GetAtt Distribution.DomainName
-  URL:
-    Description: URL of your website
-    Value: !Sub https://${Domain}
+  UserArn:
+    Description: IAM user with bucket and stack admin rigths
+    Value: !GetAtt User.Arn
+  # CertificateArn: 
+  #   Description: ACM TLS certificate
+  #   Value: !Ref Certificate
+  # URL:
+  #   Description: URL of your website
+  #   Value: !Sub https://${Domain}

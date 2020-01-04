@@ -1,0 +1,33 @@
+# TODO: fetch secrets by environment name!!!
+name: cd
+on:
+  push:
+    branches:
+      - test
+      - master
+    paths:
+      - index.html
+      - **/stack.yml
+env:
+  BRANCH: ${GITHUB_REF##*/}
+jobs:
+  test:
+    name: deploy $BRANCH environment to aws
+    runs-on: ubuntu-latest
+    steps:
+      - name: clone repo
+        uses: actions/checkout@v1.0.0
+      # aws-cli comes bundled in github actions
+      - name: configure aws credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-3
+      - name: update the cloudformation stack
+        runs: |
+          aws cloudformation update-stack \
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME }} \
+            --template-body="$(cat ./$BRANCH/stack.yml)"
+      - name: update s3 bucket with index.html
+        runs: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME }}
