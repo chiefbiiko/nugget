@@ -8,11 +8,9 @@ on:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
-env:
-  BRANCH: ${GITHUB_REF##*/}
 jobs:
   test:
-    name: deploy ${{ env.BRANCH }} environment to aws
+    name: aws deployment
     runs-on: ubuntu-latest
     steps:
       - name: clone repo
