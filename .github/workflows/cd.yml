@@ -48,7 +48,7 @@ jobs:
             --template-body="$(cat ./stack.yml)"
       - name: update the website content in the test environment
         if: endsWith(github.ref, "test")
-        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST] }}
+        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
       - name: update the website content in the master environment
         if: endsWith(github.ref, "master")
-        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER] }}
+        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER }}
