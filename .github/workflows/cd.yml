@@ -1,54 +1,40 @@
-name: cd
+# updates an aws cloudformation stack when either index.html, stack.yml, or 
+# this file itself is changed in the test branch. this template assumes that the
+# corresponding stack has initially been created through a manual action as the
+# deployment steps only performs updates. Moreover, this template relies on a 
+# couple secrets: AWS_ACCESS_KEY_ID_TEST, AWS_SECRET_ACCESS_KEY_TEST, 
+# AWS_CLOUDFORMATION_STACK_NAME_TEST, AWS_S3_BUCKET_NAME_TEST
+name: continous deployment
 on:
   push:
     branches:
       - test
-      - master
     paths:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
 jobs:
-  test:
-    name: aws deployment
+  deploy:
+    name: test environment deployment
     runs-on: ubuntu-latest
     steps:
-      - name: clone repo
+      - name: clone the repo
         uses: actions/checkout@v1.0.0
-      - name: configure aws credentials for the test environment
-        if: endsWith(github.ref, 'test')
+      - name: authenticate with aws
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
           aws-region: eu-west-3
-      - name: configure aws credentials for the master environment
-        if: endsWith(github.ref, 'master')
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_MASTER }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_MASTER }}
-          aws-region: eu-west-3
-      # aws-cli comes bundled in github actions
       - name: validate the cloudformation template
-        run: aws cloudformation validate-template --template-body="$(cat ./stack.yml)"
-      - name: update the test environment
-        if: endsWith(github.ref, 'test')
+        run: |
+          aws cloudformation validate-template \
+            --template-body="$(cat ./stack.yml)"
+      - name: update the web stack
         run: |
           aws cloudformation update-stack \
             --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
             --template-body="$(cat ./stack.yml)" \
             --capabilities=CAPABILITY_IAM
-      - name: update the master environment
-        if: endsWith(github.ref, 'master')
-        run: |
-          aws cloudformation update-stack \
-            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
-            --template-body="$(cat ./stack.yml)" \
-            --capabilities=CAPABILITY_IAM
-      - name: update the website content in the test environment
-        if: endsWith(github.ref, 'test')
+      - name: update the website content
         run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
-      - name: update the website content in the master environment
-        if: endsWith(github.ref, 'master')
-        run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER }}
