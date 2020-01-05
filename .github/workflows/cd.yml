@@ -1,40 +1,40 @@
-name: cd
+# updates an aws cloudformation stack when either index.html, stack.yml, or 
+# this file itself is changed in the master branch. this template assumes that the
+# corresponding stack has initially been created through a manual action as the
+# deployment steps only performs updates. Moreover, this template relies on a 
+# couple secrets: AWS_ACCESS_KEY_ID_MASTER, AWS_SECRET_ACCESS_KEY_MASTER, 
+# AWS_CLOUDFORMATION_STACK_NAME_MASTER, AWS_S3_BUCKET_NAME_MASTER
+name: continous deployment
 on:
   push:
     branches:
-      - test
       - master
     paths:
       - index.html
-      - stack.yml'
-env:
-  BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
-  _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH) }}
-  _AWS_SECRET_ACCESS_KEY: ${{ format('AWS_SECRET_ACCESS_KEY_{0}', env.BRANCH) }}
-  _AWS_CLOUDFORMATION_STACK_NAME: ${{ format('AWS_CLOUDFORMATION_STACK_NAME_{0}', env.BRANCH) }}
-  _AWS_S3_BUCKET_NAME: ${{ format('AWS_S3_BUCKET_NAME_{0}', env.BRANCH) }}
+      - stack.yml
+      - .github/workflows/cd.yml
 jobs:
-  test:
-    name: deploy $BRANCH environment to aws
+  deploy:
+    name: master environment deployment
     runs-on: ubuntu-latest
     steps:
-      - name: clone repo
+      - name: clone the repo
         uses: actions/checkout@v1.0.0
-      # aws-cli comes bundled in github actions
-      - name: configure aws credentials
+      - name: authenticate with aws
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets[env._AWS_ACCESS_KEY_ID] }}
-          aws-secret-access-key: ${{ secrets[env._AWS_SECRET_ACCESS_KEY] }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_MASTER }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_MASTER }}
           aws-region: eu-west-3
       - name: validate the cloudformation template
-        runs: |
+        run: |
           aws cloudformation validate-template \
             --template-body="$(cat ./stack.yml)"
-      - name: update the cloudformation stack
-        runs: |
+      - name: update the web stack
+        run: |
           aws cloudformation update-stack \
-            --stack-name=${{ secrets[env._AWS_CLOUDFORMATION_STACK_NAME] }} \
-            --template-body="$(cat ./stack.yml)"
-      - name: update s3 bucket with index.html
-        runs: aws s3 copy ./index.html s3://${{ secrets._AWS_S3_BUCKET_NAME }}
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
+            --template-body="$(cat ./stack.yml)" \
+            --capabilities=CAPABILITY_IAM
+      - name: update the website content
+        run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER }}
