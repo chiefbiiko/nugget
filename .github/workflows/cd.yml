@@ -8,9 +8,11 @@ on:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
+env:
+  BRANCH: ${GITHUB_REF##*/}
 jobs:
   test:
-    name: deploy ${GITHUB_REF##*/} environment to aws
+    name: deploy $BRANCH environment to aws
     runs-on: ubuntu-latest
     steps:
       - name: clone repo
@@ -40,12 +42,12 @@ jobs:
             aws cloudformation update-stack \
               --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
               --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM \
+              --capabilities=CAPABILITY_IAM; \
           else \
             aws cloudformation create-stack \
               --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
               --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM \
+              --capabilities=CAPABILITY_IAM; \
           fi
       - name: crupdate the master environment
         if: endsWith(github.ref, 'master')
@@ -54,12 +56,12 @@ jobs:
             aws cloudformation update-stack \
               --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
               --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM \
+              --capabilities=CAPABILITY_IAM; \
           else \
             aws cloudformation create-stack \
               --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
               --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM \
+              --capabilities=CAPABILITY_IAM; \
           fi
       - name: update the website content in the test environment
         if: endsWith(github.ref, 'test')
