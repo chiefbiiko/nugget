@@ -135,6 +135,12 @@ Resources:
                 Effect: Allow
                 Action: cloudformation:*
                 Resource: !Ref AWS::StackId
+              - Sid: AllowStackCreationAndValidation
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:ValidateTemplate
+                Resource: *
 Outputs:
   StackName:
     Description: CloudFormation stack name

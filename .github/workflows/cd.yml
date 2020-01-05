@@ -13,9 +13,9 @@ jobs:
     name: deploy ${{ github.ref }} environment to aws
     runs-on: ubuntu-latest
     steps:
+      # TODO: create a crupdate alias
       - name: clone repo
         uses: actions/checkout@v1.0.0
-      # aws-cli comes bundled in github actions
       - name: configure aws credentials for the test environment
         if: endsWith(github.ref, 'test')
         uses: aws-actions/configure-aws-credentials@v1
@@ -30,6 +30,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_MASTER }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_MASTER }}
           aws-region: eu-west-3
+      # aws-cli comes bundled in github actions
       - name: validate the cloudformation template
         run: |
           aws cloudformation validate-template \
@@ -39,13 +40,15 @@ jobs:
         run: |
           aws cloudformation update-stack \
             --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
-            --template-body="$(cat ./stack.yml)"
+            --template-body="$(cat ./stack.yml)" \
+            --capabilities=CAPABILITY_IAM
       - name: update the cloudformation stack in the master environment
         if: endsWith(github.ref, 'master')
         run: |
           aws cloudformation update-stack \
             --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
-            --template-body="$(cat ./stack.yml)"
+            --template-body="$(cat ./stack.yml)" \
+            --capabilities=CAPABILITY_IAM
       - name: update the website content in the test environment
         if: endsWith(github.ref, 'test')
         run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
