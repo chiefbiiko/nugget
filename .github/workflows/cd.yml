@@ -8,40 +8,47 @@ on:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
-env:
-  BRANCH: tr a-z A-Z <<< ${GITHUB_REF##*/}
-  # _AWS_ACCESS_KEY_ID: ${{ format('AWS_ACCESS_KEY_ID_{0}', env.BRANCH) }}
-  # _AWS_SECRET_ACCESS_KEY: ${{ format('AWS_SECRET_ACCESS_KEY_{0}', env.BRANCH) }}
-  # _AWS_CLOUDFORMATION_STACK_NAME: ${{ format('AWS_CLOUDFORMATION_STACK_NAME_{0}', env.BRANCH) }}
-  # _AWS_S3_BUCKET_NAME: ${{ format('AWS_S3_BUCKET_NAME_{0}', env.BRANCH) }}
 jobs:
   test:
-    name: deploy $BRANCH environment to aws
+    name: deploy ${{ github.ref }} environment to aws
     runs-on: ubuntu-latest
     steps:
       - name: clone repo
         uses: actions/checkout@v1.0.0
-      - name: enrich env
-        run: |
-          echo "::set-env name=_AWS_ACCESS_KEY_ID::AWS_ACCESS_KEY_ID_$BRANCH"
-          echo "::set-env name=_AWS_SECRET_ACCESS_KEY::AWS_SECRET_ACCESS_KEY_$BRANCH"
-          echo "::set-env name=_AWS_CLOUDFORMATION_STACK_NAME::AWS_CLOUDFORMATION_STACK_NAME_$BRANCH"
-          echo "::set-env name=_AWS_S3_BUCKET_NAME::AWS_S3_BUCKET_NAME_$BRANCH"
       # aws-cli comes bundled in github actions
-      - name: configure aws credentials
+      - name: configure aws credentials for the test environment
+        if: endsWith(github.ref, "test")
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-access-key-id: ${{ secrets[env._AWS_ACCESS_KEY_ID] }}
-          aws-secret-access-key: ${{ secrets[env._AWS_SECRET_ACCESS_KEY] }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
+          aws-region: eu-west-3
+      - name: configure aws credentials for the master environment
+        if: endsWith(github.ref, "master")
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_MASTER }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_MASTER }}
           aws-region: eu-west-3
       - name: validate the cloudformation template
         run: |
           aws cloudformation validate-template \
             --template-body="$(cat ./stack.yml)"
-      - name: update the cloudformation stack
+      - name: update the cloudformation stack in the test environment
+        if: endsWith(github.ref, "test")
         run: |
           aws cloudformation update-stack \
-            --stack-name=${{ secrets[env._AWS_CLOUDFORMATION_STACK_NAME] }} \
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
             --template-body="$(cat ./stack.yml)"
-      - name: update s3 bucket with index.html
-        run: aws s3 copy ./index.html s3://${{ secrets[env._AWS_S3_BUCKET_NAME] }}
+      - name: update the cloudformation stack in the master environment
+        if: endsWith(github.ref, "master")
+        run: |
+          aws cloudformation update-stack \
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
+            --template-body="$(cat ./stack.yml)"
+      - name: update the website content in the test environment
+        if: endsWith(github.ref, "test")
+        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST] }}
+      - name: update the website content in the master environment
+        if: endsWith(github.ref, "master")
+        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER] }}
