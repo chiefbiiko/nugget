@@ -12,7 +12,7 @@ env:
   BRANCH: ${GITHUB_REF##*/}
 jobs:
   test:
-    name: deploy $BRANCH environment to aws
+    name: deploy ${{ env.BRANCH }} environment to aws
     runs-on: ubuntu-latest
     steps:
       - name: clone repo
@@ -34,35 +34,20 @@ jobs:
       # aws-cli comes bundled in github actions
       - name: validate the cloudformation template
         run: aws cloudformation validate-template --template-body="$(cat ./stack.yml)"
-      # TODO: detect if anything will upd b4 errrin - check da changeset
-      - name: crupdate the test environment
+      - name: update the test environment
         if: endsWith(github.ref, 'test')
         run: |
-          if aws cloudformation describe-stack --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }}; then \
-            aws cloudformation update-stack \
-              --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
-              --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM; \
-          else \
-            aws cloudformation create-stack \
-              --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
-              --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM; \
-          fi
-      - name: crupdate the master environment
+          aws cloudformation update-stack \
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
+            --template-body="$(cat ./stack.yml)" \
+            --capabilities=CAPABILITY_IAM
+      - name: update the master environment
         if: endsWith(github.ref, 'master')
         run: |
-          if aws cloudformation describe-stack --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }}; then \
-            aws cloudformation update-stack \
-              --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
-              --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM; \
-          else \
-            aws cloudformation create-stack \
-              --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
-              --template-body="$(cat ./stack.yml)" \
-              --capabilities=CAPABILITY_IAM; \
-          fi
+          aws cloudformation update-stack \
+            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_MASTER }} \
+            --template-body="$(cat ./stack.yml)" \
+            --capabilities=CAPABILITY_IAM
       - name: update the website content in the test environment
         if: endsWith(github.ref, 'test')
         run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
