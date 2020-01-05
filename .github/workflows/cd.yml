@@ -10,7 +10,7 @@ on:
       - .github/workflows/cd.yml
 jobs:
   test:
-    name: deploy ${{ github.ref }} environment to aws
+    name: deploy ${GITHUB_REF##*/} environment to aws
     runs-on: ubuntu-latest
     steps:
       # TODO: create a crupdate alias
@@ -51,7 +51,7 @@ jobs:
             --capabilities=CAPABILITY_IAM
       - name: update the website content in the test environment
         if: endsWith(github.ref, 'test')
-        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
+        run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
       - name: update the website content in the master environment
         if: endsWith(github.ref, 'master')
-        run: aws s3 copy ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER }}
+        run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_MASTER }}
