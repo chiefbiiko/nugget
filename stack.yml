@@ -1,14 +1,20 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: Website distribution stack #using a Route53 domain
 Metadata:
-  'AWS::CloudFormation::Interface':
+  "AWS::CloudFormation::Interface":
     ParameterGroups:
       # - Label: 
       #     default: DNS
-      #   Parameters: [Domain, HostedZoneId]
+      #   Parameters: 
+      #     - Domain
+      #     - HostedZoneId
       - Label: 
           default: CDN
-        Parameters: [DefaultRootObject, DefaultTTL, MaxTTL, MinTTL]
+        Parameters:
+          - DefaultRootObject
+          - DefaultTTL
+          - MaxTTL
+          - MinTTL
 Parameters:
   # Domain:
   #   Description: Route53 domain fx example.com
@@ -17,17 +23,17 @@ Parameters:
   #   Description: Route53 hosted zone id
   #   Type: AWS::Route53::HostedZone::Id
   DefaultTTL:
-    Description: Default cache object TTL
+    Description: Default cache object TTL - default 1h
     Type: Number
-    Default: 3600 # 1h
+    Default: 3600
   MaxTTL:
-    Description: Maximum cache object TTL
+    Description: Maximum cache object TTL - default 2h
     Type: Number
-    Default: 7200 # 2h
+    Default: 7200
   MinTTL:
-    Description: Minimum cache object TTL
+    Description: Minimum cache object TTL - default 1/2h
     Type: Number
-    Default: 1800 # 1/2h
+    Default: 1800
   DefaultRootObject:
     Description: Default root object path used by the CloudFront distribution
     Type: String
@@ -51,16 +57,26 @@ Resources:
             Effect: Allow
             Principal:
               CanonicalUser: !GetAtt OriginAccessIdentity.S3CanonicalUserId
-            Action: [s3:Get*, s3:List*]
-            Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]  
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Sub arn:aws:s3:::${Bucket}
+              - !Sub arn:aws:s3:::${Bucket}/*
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
         # Aliases: [!Ref Domain]
         DefaultCacheBehavior:
-          AllowedMethods: [GET, HEAD, OPTIONS]
-          CachedMethods: [GET, HEAD, OPTIONS]
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          CachedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
           Compress: true
           DefaultTTL: !Ref DefaultTTL
           ForwardedValues:
@@ -109,15 +125,24 @@ Resources:
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Sid: AllowBucketAdministration
+              - Sid: AllowBucketContentUpdates
                 Effect: Allow
-                Action: s3:*
-                Resource: [!Sub arn:aws:s3:::${Bucket}, !Sub arn:aws:s3:::${Bucket}/*]
-              - Sid: AllowStackAdministration
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::${Bucket}/*
+              - Sid: AllowStackUpdates
                 Effect: Allow
-                Action: cloudformation:*
+                Action: cloudformation:UpdateStack
                 Resource: !Ref AWS::StackId
+              - Sid: AllowTemplateValidation
+                Effect: Allow
+                Action: cloudformation:ValidateTemplate
+                Resource: "*"
 Outputs:
+  StackName:
+    Description: CloudFormation stack name
+    Value: !Ref AWS::StackName
   BucketName:
     Description: S3 bucket name
     Value: !Ref Bucket
