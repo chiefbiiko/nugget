@@ -125,21 +125,19 @@ Resources:
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Sid: AllowBucketAdministration
-                Effect: Allow
-                Action: s3:*
-                Resource:
-                  - !Sub arn:aws:s3:::${Bucket}
-                  - !Sub arn:aws:s3:::${Bucket}/*
-              - Sid: AllowStackAdministration
-                Effect: Allow
-                Action: cloudformation:*
-                Resource: !Ref AWS::StackId
-              - Sid: AllowStackCreationAndValidation
+              - Sid: AllowBucketContentUpdates
                 Effect: Allow
                 Action:
-                  - cloudformation:CreateStack
-                  - cloudformation:ValidateTemplate
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::${Bucket}/*
+              - Sid: AllowStackUpdates
+                Effect: Allow
+                Action: cloudformation:UpdateStack
+                Resource: !Ref AWS::StackId
+              - Sid: AllowTemplateValidation
+                Effect: Allow
+                Action: cloudformation:ValidateTemplate
                 Resource: "*"
 Outputs:
   StackName:
