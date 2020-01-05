@@ -1,9 +1,11 @@
 # updates an aws cloudformation stack when either index.html, stack.yml, or 
 # this file itself is changed in the test branch. this template assumes that the
 # corresponding stack has initially been created through a manual action as the
-# deployment steps only performs updates. Moreover, this template relies on a 
-# couple secrets: AWS_ACCESS_KEY_ID_TEST, AWS_SECRET_ACCESS_KEY_TEST, 
-# AWS_CLOUDFORMATION_STACK_NAME_TEST, AWS_S3_BUCKET_NAME_TEST
+# deployment steps only performs updates. Moreover, this template relies on two
+# secrets: AWS_ACCESS_KEY_ID_TEST, AWS_SECRET_ACCESS_KEY_TEST. These must be the
+# security credentials of the iam user included in the stack. Get the 
+# credentials from the iam console. Lastly, this template assumes that the 
+# stack is called NuggetWebStack - see env.
 name: continous deployment
 on:
   push:
@@ -13,6 +15,8 @@ on:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
+env:
+  STACK_NAME: NuggetWebStack
 jobs:
   deploy:
     name: test environment deployment
@@ -33,8 +37,12 @@ jobs:
       - name: update the web stack
         run: |
           aws cloudformation update-stack \
-            --stack-name=${{ secrets.AWS_CLOUDFORMATION_STACK_NAME_TEST }} \
+            --stack-name=${{ env.STACK_NAME }} \
             --template-body="$(cat ./stack.yml)" \
             --capabilities=CAPABILITY_IAM
+      - name: determine the web stack's bucket name
+        run: |
+          _BUCKET_NAME=$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | {PhysicalResourceId}') \
+          echo "::set-env name=BUCKET_NAME::$_BUCKET_NAME"
       - name: update the website content
-        run: aws s3 cp ./index.html s3://${{ secrets.AWS_S3_BUCKET_NAME_TEST }}
+        run: aws s3 cp ./index.html s3://${{ env.BUCKET_NAME }}
