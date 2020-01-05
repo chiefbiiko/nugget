@@ -140,7 +140,7 @@ Resources:
                 Action:
                   - cloudformation:CreateStack
                   - cloudformation:ValidateTemplate
-                Resource: *
+                Resource: "*"
 Outputs:
   StackName:
     Description: CloudFormation stack name
