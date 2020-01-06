@@ -67,7 +67,8 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        # Aliases: [!Ref Domain]
+        # Aliases: 
+        #   - !Ref Domain
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -125,15 +126,17 @@ Resources:
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Sid: AllowBucketContentUpdates
+              - Sid: AllowBucketObjectUpdates
                 Effect: Allow
                 Action:
                   - s3:GetObject
                   - s3:PutObject
                 Resource: !Sub arn:aws:s3:::${Bucket}/*
-              - Sid: AllowStackUpdates
+              - Sid: AllowStackDescriptionsAndUpdates
                 Effect: Allow
-                Action: cloudformation:UpdateStack
+                Action: 
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:UpdateStack
                 Resource: !Ref AWS::StackId
               - Sid: AllowTemplateValidation
                 Effect: Allow

@@ -17,6 +17,7 @@ on:
       - .github/workflows/cd.yml
 env:
   STACK_NAME: NuggetWebStack
+  BUCKET_NAME: ""
 jobs:
   deploy:
     name: test environment deployment
@@ -31,19 +32,12 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
           aws-region: eu-west-3
       - name: validate the cloudformation template
-        run: |
-          aws cloudformation validate-template \
-            --template-body="$(cat ./stack.yml)"
+        run: aws cloudformation validate-template --template-body="$(cat ./stack.yml)"
       - name: update the web stack
-        run: |
-          aws cloudformation update-stack \
-            --stack-name=${{ env.STACK_NAME }} \
-            --template-body="$(cat ./stack.yml)" \
-            --capabilities=CAPABILITY_IAM
+        run: aws cloudformation update-stack --stack-name=${{ env.STACK_NAME }} --template-body="$(cat ./stack.yml)" --capabilities=CAPABILITY_IAM
       - name: determine the web stack's bucket name
         run: |
-          _BUCKET_NAME=$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | {PhysicalResourceId}'); \
+          _BUCKET_NAME="$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | .PhysicalResourceId')"
           echo "::set-env name=BUCKET_NAME::$_BUCKET_NAME"
-          echo "BUCKET_NAME ENV VAR: $BUCKET_NAME"
       - name: update the website content
         run: aws s3 cp ./index.html s3://${{ env.BUCKET_NAME }}
