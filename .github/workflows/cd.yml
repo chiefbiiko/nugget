@@ -42,7 +42,8 @@ jobs:
             --capabilities=CAPABILITY_IAM
       - name: determine the web stack's bucket name
         run: |
-          _BUCKET_NAME=$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | {PhysicalResourceId}') \
+          _BUCKET_NAME=$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | {PhysicalResourceId}'); \
           echo "::set-env name=BUCKET_NAME::$_BUCKET_NAME"
+          echo "BUCKET_NAME ENV VAR: $BUCKET_NAME"
       - name: update the website content
         run: aws s3 cp ./index.html s3://${{ env.BUCKET_NAME }}
