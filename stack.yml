@@ -139,6 +139,11 @@ Resources:
                 Effect: Allow
                 Action: cloudformation:ValidateTemplate
                 Resource: "*"
+  AccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref User
 Outputs:
   StackName:
     Description: CloudFormation stack name
@@ -152,6 +157,12 @@ Outputs:
   UserArn:
     Description: IAM user with bucket and stack admin rigths
     Value: !GetAtt User.Arn
+  UserAccessKeyId:
+    Description: Access key id of the IAM user
+    Value: !Ref AccessKey
+  UserSecretAccessKey:
+    Description: Secret access key of the IAM user
+    Value: !GetAtt AccessKey.SecretAccessKey
   # CertificateArn: 
   #   Description: ACM TLS certificate
   #   Value: !Ref Certificate
