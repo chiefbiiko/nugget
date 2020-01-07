@@ -1,3 +1,6 @@
 # ...
 
-playin around
+TODO:
+
++ org stack
++ web stack
