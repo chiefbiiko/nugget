@@ -2,5 +2,5 @@
 
 TODO:
 
-+ org stack
++ org setup bash script
 + web stack
