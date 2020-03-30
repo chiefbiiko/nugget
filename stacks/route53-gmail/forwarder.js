@@ -28,11 +28,11 @@ console.log("AWS Lambda SES Forwarder // @arithmetric // Version 4.2.0");
 //   To match a mailbox name on all domains, use a key without the "at" symbol
 //   and domain part of an email address (i.e. `info`).
 var defaultConfig = {
-  fromEmail: process.env.FROM_EMAIL, //"hello@nugget.digital",
-  subjectPrefix: process.env.SUBJECT_PREFIX,
-  emailBucket: process.env.BUCKET_NAME,
-  emailKeyPrefix: process.env.EMAIL_KEY_PREFIX,
-  // forwardMapping expects: {"@nugget.digital":["nugget.digital@gmail.com"]}
+  fromEmail: process.env.FROM_EMAIL, // "hello@nugget.digital"
+  subjectPrefix: process.env.SUBJECT_PREFIX || "",
+  emailBucket: process.env.BUCKET_NAME, 
+  emailKeyPrefix: process.env.EMAIL_KEY_PREFIX || "",
+  // forwardMapping expects: '{"@nugget.digital":["nugget.digital@gmail.com"]}'
   forwardMapping: process.env.FORWARD_MAPPING
 };
 
