@@ -14,7 +14,6 @@ Parameters:
     Description: route53 domain fx example.com
     Type: String
   HostedZoneId:
-    # TODO: try fetch this with above DomainName and sub toss this param
     Description: identifier of your domain's hosted zone
     Type: String
   FromEmail:
@@ -23,6 +22,10 @@ Parameters:
   ForwardMapping:
     Description: json document mapping receptions to gmail targets
     Type: String
+  EmailKeyPrefix:
+    Description: prefix for s3 object keys for emails
+    Type: String
+    Default: ""
 Resources:
   # [BEGIN_SECTION DOMAIN_VERIFICATION+DKIM_RECORDS]
   # see:
@@ -68,7 +71,7 @@ Resources:
       HostedZoneId: !Ref HostedZoneId
       RecordSets: !GetAtt DkimTokens.RecordSets
 
-  SnsTopic:
+  Topic:
     Type: AWS::SNS::Topic
 
   IdentityNotifications:
@@ -76,8 +79,8 @@ Resources:
     Properties:
       Identity: !GetAtt VerifiedIdentity.Identity
       Region: !GetAtt VerifiedIdentity.Region
-      BounceTopic: !Ref SnsTopic
-      ComplaintTopic: !Ref  SnsTopic
+      BounceTopic: !Ref Topic
+      ComplaintTopic: !Ref  Topic
       HeadersInBounceNotificationsEnabled: true
       HeadersInComplaintNotificationsEnabled: true
       ForwardingEnabled: false
@@ -99,7 +102,7 @@ Resources:
           BUCKET_NAME: !Ref Bucket
           FROM_EMAIL: !Ref FromEmail
           FORWARD_MAPPING: !Ref ForwardMapping
-          EMAIL_KEY_PREFIX: ""
+          EMAIL_KEY_PREFIX: !Ref EmailKeyPrefix
           SUBJECT_PREFIX: ""
       Handler: index.handler
       Runtime: nodejs12.x
@@ -138,7 +141,37 @@ Resources:
   # [END_SECTION FORWARDING_LAMBDA]
 
   # [BEGIN_SECTION MAIL_RECEPTION]
-  # TODO
+  # see: https://binx.io/blog/2019/11/25/how-to-set-the-active-receipt-rule-set-in-ses-using-cloudformation/
+  ReceiptRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+    Properties:
+      RuleSetName: !Sub ${AWS::StackName}ReceiptRuleSet
+
+  ReceiptRule:
+    Type: AWS::SES::ReceiptRule
+    Properties:
+      Rule:
+        Actions:
+          - S3Action:
+              BucketName: !Ref Bucket
+              KmsKeyArn: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ses
+              ObjectKeyPrefix: !Ref EmailKeyPrefix
+            LambdaAction: 
+              FunctionArn: !GetAtt Function.Arn
+              InvocationType: Event
+        Enabled: true
+        Recipients: 
+          - !Ref DomainName
+        ScanEnabled: true
+        TlsPolicy: Require
+      RuleSetName: !Ref ReceiptRuleSet
+
+  ActiveReceiptRuleSet:
+    Type: Custom::ActiveReceiptRuleSet
+    Properties:
+      RuleSetName: !Ref ReceiptRuleSet
+      Region: !Ref AWS::Region
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
   # [END_SECTION MAIL_RECEPTION]
 
   # [BEGIN_SECTION SMTP_USER]
