@@ -7,6 +7,7 @@
 # credentials from the iam console. Lastly, this template assumes that the 
 # stack is called NuggetWebStack - see env.
 name: continous deployment
+
 on:
   push:
     branches:
@@ -15,18 +16,41 @@ on:
       - index.html
       - stack.yml
       - .github/workflows/cd.yml
+
 env:
-  STACK_NAME: NuggetWebStack
+  SITE_STACK_NAME: nugget-website-stack
+  MAIL_STACK_NAME: nugget-email-stack
   BUCKET_NAME: ""
+
+# aws cloudformation deploy \
+#   --stack-name=cfn-ses-provider \
+#   --template-file=./custom-resources/cfn-ses-provider/cloudformation/cfn-resource-provider.yaml \
+#   --capabilities=CAPABILITY_IAM
+# 
+# aws cloudformation deploy \
+#   --stack-name=cfn-secret-provider \
+#   --template-file=./custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
+#   --capabilities=CAPABILITY_IAM
+# 
+# aws cloudformation deploy \
+#   --stack-name=nugget-website-stack \
+#   --template-body=file://site/stack.yml \
+#   --capabilities=CAPABILITY_IAM
+# 
+# aws cloudformation deploy \
+#   --stack-name=nugget-email-stack \
+#   --template-body=file://mail/stack.yml \
+#   --capabilities=CAPABILITY_IAM
+
 jobs:
   deploy:
     name: test environment deployment
     runs-on: ubuntu-latest
     steps:
       - name: clone the repo
-        uses: actions/checkout@v1.0.0
+        uses: actions/checkout@v2.0.0
       - name: authenticate with aws
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v1.3.2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_TEST }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
@@ -34,10 +58,10 @@ jobs:
       - name: validate the cloudformation template
         run: aws cloudformation validate-template --template-body="$(cat ./stack.yml)"
       - name: update the web stack
-        run: aws cloudformation update-stack --stack-name=${{ env.STACK_NAME }} --template-body="$(cat ./stack.yml)" --capabilities=CAPABILITY_IAM
+        run: aws cloudformation update-stack --stack-name=${{ env.SITE_STACK_NAME }} --template-body="$(cat ./stack.yml)" --capabilities=CAPABILITY_IAM
       - name: determine the web stack's bucket name
         run: |
-          _BUCKET_NAME="$(aws cloudformation describe-stack-resources --stack-name=${{ env.STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | .PhysicalResourceId')"
+          _BUCKET_NAME="$(aws cloudformation describe-stack-resources --stack-name=${{ env.SITE_STACK_NAME }} | jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | .PhysicalResourceId')"
           echo "::set-env name=BUCKET_NAME::$_BUCKET_NAME"
       - name: update the website content
         run: aws s3 cp ./index.html s3://${{ env.BUCKET_NAME }}

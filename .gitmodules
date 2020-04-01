@@ -1,0 +1,6 @@
+[submodule "stacks/custom-resources/cfn-secret-provider"]
+	path = stacks/custom-resources/cfn-secret-provider
+	url = https://github.com/binxio/cfn-secret-provider
+[submodule "stacks/custom-resources/cfn-ses-provider"]
+	path = stacks/custom-resources/cfn-ses-provider
+	url = https://github.com/binxio/cfn-ses-provider.git

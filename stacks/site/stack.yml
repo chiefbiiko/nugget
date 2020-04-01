@@ -41,11 +41,13 @@ Parameters:
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
+
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
     Properties:
       CloudFrontOriginAccessIdentityConfig:
         Comment: CFS3OAI # required 4 some reason
+
   BucketPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -63,6 +65,7 @@ Resources:
             Resource:
               - !Sub arn:aws:s3:::${Bucket}
               - !Sub arn:aws:s3:::${Bucket}/*
+
   Distribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -103,6 +106,7 @@ Resources:
   #         AcmCertificateArn: !Ref Certificate
   #         MinimumProtocolVersion: TLSv1.2_2018
   #         SSLSupportMethod: sni-only
+
   # RecordSet:
   #   Type: AWS::Route53::RecordSet
   #   Properties:
@@ -113,11 +117,13 @@ Resources:
   #       # Below zone id is used for any CloudFront Distribution
   #       HostedZoneId: Z2FDTNDATAQYW2
   #       DNSName: !GetAtt Distribution.DomainName
+
   # Certificate:
   #   Type: AWS::CertificateManager::Certificate
   #   Properties:
   #     DomainName: !Ref Domain
   #     ValidationMethod: DNS
+
   User:
     Type: AWS::IAM::User
     Properties:
@@ -142,11 +148,13 @@ Resources:
                 Effect: Allow
                 Action: cloudformation:ValidateTemplate
                 Resource: "*"
+
   AccessKey:
     Type: AWS::IAM::AccessKey
     Properties:
       Status: Active
       UserName: !Ref User
+
 Outputs:
   StackName:
     Description: CloudFormation stack name

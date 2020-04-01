@@ -4,11 +4,23 @@
 # and
 # https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
 # TODO:
-# - find a solution for this stack's dependencies on above mentioned binx.io providers
-# - either automated or just manually
 # - read about adding a SPF record to a hosted zone
 AWSTemplateFormatVersion: 2010-09-09
 Description: mail forwarding service - route53, ses, ... <-> gmail
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: DNS
+        Parameters:
+          - DomainName
+          - HostedZoneId
+      - Label: 
+          default: Email
+        Parameters:
+          - FromEmail
+          - ForwardMapping
+          - EmailKeyPrefix
 Parameters:
   DomainName:
     Description: route53 domain fx example.com
@@ -47,7 +59,7 @@ Resources:
     Properties:
       Identity: !GetAtt DomainIdentity.Domain
       Region: !GetAtt DomainIdentity.Region
-      Dummy: true
+      # Dummy: true ???
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
 
   VerificationRecords:
