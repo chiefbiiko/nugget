@@ -22,6 +22,7 @@ env:
   MAIL_STACK_NAME: nugget-email-stack
   BUCKET_NAME: ""
 
+# TODO: specify commented/inactive deploy jobs
 # aws cloudformation deploy \
 #   --stack-name=cfn-ses-provider \
 #   --template-file=./custom-resources/cfn-ses-provider/cloudformation/cfn-resource-provider.yaml \
