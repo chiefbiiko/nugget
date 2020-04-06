@@ -5,6 +5,8 @@
 # be the security credentials of the iam user included in the stack. Get the
 # credentials from the iam console. Lastly, this template assumes that the
 # stack is called $SITE_STACK_NAME - see env.
+
+# TODO: make this file identical across branches by introing some ifs
 name: continous deployment
 
 on:
