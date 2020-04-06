@@ -1,70 +1,96 @@
-# updates an aws cfn stack when eitherthe site's index.html, stack.yml, or this
-# file itself is changed in the test branch. this template assumes that the
+# TODO:
+#create a separate stack for the deploying iam user per env!
+#2preset their creds as github secrets!
+#rewwrite docs
+
+# this template assumes that the
 # corresponding stack has initially been created. Moreover, this template relies
-# on two secrets: AWS_ACCESS_KEY_ID_TEST, AWS_SECRET_ACCESS_KEY_TEST. These must
-# be the security credentials of the iam user included in the stack. Get the
+# on two secrets: AWS_ACCESS_KEY_ID_TEST_(PROD|TEST), AWS_SECRET_ACCESS_KEY_(PROD|TEST). These must
+# be the security credentials of the iam user included in the stack - for the given environment Get the
 # credentials from the iam console. Lastly, this template assumes that the
 # stack is called $SITE_STACK_NAME - see env.
 
-# TODO: make this file identical across branches by introing some ifs
 name: continous deployment
 
 on:
   push:
     branches:
       - test
+      - master
     paths:
-      - stacks/site/*
+      - stacks/**
       - .github/workflows/cd.yml
 
 env:
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_TEST }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }}
   AWS_REGION: eu-west-3
   SITE_STACK_NAME: nugget-website-stack
   MAIL_STACK_NAME: nugget-email-stack
   SECRET_PROVIDER_STACK_NAME: nugget-secret-provider
   SES_PROVIDER_STACK_NAME: nugget-ses-provider
   BUCKET_NAME: "<will be set by the deploy_site_stack job>"
+  SHARED_CREDENTIALS_FILE_TEMPLATE: "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n"
 
 jobs:
-  # deploy_custom_resources:
-  #   name: custom resources deployment
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v2.0.0
-  #
-  #     - name: deploy ses-provider custom resources
-  #       run: |
-  #         aws cloudformation deploy \
-  #           --stack-name=${{ env.SES_PROVIDER_STACK_NAME }} \
-  #           --template-file=./stacks/custom-resources/cfn-ses-provider/cloudformation/cfn-resource-provider.yaml \
-  #           --capabilities=CAPABILITY_IAM
-  #
-  #     - name: deploy secret-provider custom resources
-  #       run: |
-  #         aws cloudformation deploy \
-  #           --stack-name=${{ env.SECRET_PROVIDER_STACK_NAME }} \
-  #           --template-file=./stacks/custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
-  #           --capabilities=CAPABILITY_IAM
-  #
-  # deploy_mail_stack:
-  #   name: mail stack deployment
-  #   needs: deploy_custom_resources
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: mail stack deployment
-  #       run: |
-  #         aws cloudformation deploy \
-  #           --stack-name=${{ env.MAIL_STACK_NAME }} \
-  #           --template-file=./stacks/mail/stack.yml \
-  #           --parameters \
-  #             ParameterKey=DomainName,ParameterValue=TODO \
-  #             ParameterKey=HostedZoneId,ParameterValue=TODO \
-  #             ParameterKey=FromEmail,ParameterValue=TODO \
-  #             ParameterKey=ForwardMapping,ParameterValue=TODO \
-  #             ParameterKey=EmailKeyPrefix,ParameterValue="" \
-  #           --capabilities=CAPABILITY_IAM
+  configure_aws_credentials:
+    runs-on: ubuntu-latest
+    steps:
+      run: |
+        if [[ ${{ github.ref }} == "master" ]]; then \
+          printf \
+            "$SHARED_CREDENTIALS_FILE_TEMPLATE" \
+            ${{ secrets.AWS_ACCESS_KEY_ID_PROD }} \
+            ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }} \
+          > $HOME/.aws/credentials
+        else
+          printf \
+            "$SHARED_CREDENTIALS_FILE_TEMPLATE" \
+            ${{ secrets.AWS_ACCESS_KEY_ID_TEST }} \
+            ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }} \
+          > $HOME/.aws/credentials
+        fi
+
+  deploy_custom_resources:
+    name: custom resources deployment
+    if: endsWith(github.ref, 'master')
+    needs: configure_aws_credentials
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2.0.0
+
+      - name: deploy ses-provider custom resources
+        run: |
+          aws cloudformation deploy \
+            --stack-name=${{ env.SES_PROVIDER_STACK_NAME }} \
+            --template-file=./stacks/custom-resources/cfn-ses-provider/cloudformation/cfn-resource-provider.yaml \
+            --capabilities=CAPABILITY_IAM
+
+      - name: deploy secret-provider custom resources
+        run: |
+          aws cloudformation deploy \
+            --stack-name=${{ env.SECRET_PROVIDER_STACK_NAME }} \
+            --template-file=./stacks/custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
+            --capabilities=CAPABILITY_IAM
+
+  deploy_mail_stack:
+    name: mail stack deployment
+    if: endsWith(github.ref, 'master')
+    needs:
+      - configure_aws_credentials
+      - deploy_custom_resources
+    runs-on: ubuntu-latest
+    steps:
+      - name: mail stack deployment
+        run: |
+          aws cloudformation deploy \
+            --stack-name=${{ env.MAIL_STACK_NAME }} \
+            --template-file=./stacks/mail/stack.yml \
+            --parameter-overrides \
+              DomainName=nugget.digital \
+              HostedZoneId=TODO \
+              FromEmail=hello@nugget.digital \
+              ForwardMapping='{"@nugget.digital":["nugget.digital@gmail.com"]}' \
+              EmailKeyPrefix="" \
+            --capabilities=CAPABILITY_IAM
 
   deploy_site_stack:
     name: site stack deployment
