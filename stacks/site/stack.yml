@@ -1,21 +1,30 @@
+# TODO: make commented parts effective 4 prod only
 AWSTemplateFormatVersion: 2010-09-09
-Description: Website distribution stack #using a Route53 domain
+Description: website distribution stack #using a Route53 domain
 Metadata:
   "AWS::CloudFormation::Interface":
     ParameterGroups:
-      # - Label: 
+      # - Label:
       #     default: DNS
-      #   Parameters: 
+      #   Parameters:
       #     - Domain
       #     - HostedZoneId
-      - Label: 
+      - Label:
           default: CDN
         Parameters:
           - DefaultRootObject
           - DefaultTTL
           - MaxTTL
           - MinTTL
+      - Label:
+          default: Storage
+        Parameters:
+          - BucketName
+
 Parameters:
+  BucketName:
+    Description: S3 bucket name
+    Type: String
   # Domain:
   #   Description: Route53 domain fx example.com
   #   Type: String
@@ -38,9 +47,12 @@ Parameters:
     Description: Default root object path used by the CloudFront distribution
     Type: String
     Default: index.html
+
 Resources:
   Bucket:
     Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
 
   OriginAccessIdentity:
     Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
@@ -70,7 +82,7 @@ Resources:
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
-        # Aliases: 
+        # Aliases:
         #   - !Ref Domain
         DefaultCacheBehavior:
           AllowedMethods:
@@ -93,7 +105,7 @@ Resources:
           ViewerProtocolPolicy: redirect-to-https
         DefaultRootObject: !Ref DefaultRootObject
         Enabled: true
-        # routing ipv6 traffic from Route53 to CloudFront would require an AAAA 
+        # routing ipv6 traffic from Route53 to CloudFront would require an AAAA
         # alias record which carries along extra cost
         IPV6Enabled: false
         Origins:
@@ -124,37 +136,6 @@ Resources:
   #     DomainName: !Ref Domain
   #     ValidationMethod: DNS
 
-  User:
-    Type: AWS::IAM::User
-    Properties:
-      Policies:
-        - PolicyName: WebStackDeploymentPolicy
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Sid: AllowBucketObjectUpdates
-                Effect: Allow
-                Action:
-                  - s3:GetObject
-                  - s3:PutObject
-                Resource: !Sub arn:aws:s3:::${Bucket}/*
-              - Sid: AllowStackDescriptionsAndUpdates
-                Effect: Allow
-                Action: 
-                  - cloudformation:DescribeStackResources
-                  - cloudformation:UpdateStack
-                Resource: !Ref AWS::StackId
-              - Sid: AllowTemplateValidation
-                Effect: Allow
-                Action: cloudformation:ValidateTemplate
-                Resource: "*"
-
-  AccessKey:
-    Type: AWS::IAM::AccessKey
-    Properties:
-      Status: Active
-      UserName: !Ref User
-
 Outputs:
   StackName:
     Description: CloudFormation stack name
@@ -165,16 +146,7 @@ Outputs:
   DistributionDomainName:
     Description: CloudFront distribution domain name
     Value: !GetAtt Distribution.DomainName
-  UserArn:
-    Description: IAM user with bucket and stack admin rigths
-    Value: !GetAtt User.Arn
-  UserAccessKeyId:
-    Description: Access key id of the IAM user
-    Value: !Ref AccessKey
-  UserSecretAccessKey:
-    Description: Secret access key of the IAM user
-    Value: !GetAtt AccessKey.SecretAccessKey
-  # CertificateArn: 
+  # CertificateArn:
   #   Description: ACM TLS certificate
   #   Value: !Ref Certificate
   # URL:

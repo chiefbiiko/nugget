@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  continuous deployment setup providing one user to maintain all nugget
+  stacks. currently, only the mail stack requires continuous deployments. this
+  template's outputs provide the respective aws credentials that are
+  prerequisites for performing the mail stack updates. Make sure to manually
+  deploy this stack to the test and prod account, then set the github secrets
+  AWS_ACCESS_KEY_ID_PROD, AWS_SECRET_ACCESS_KEY_PROD, AWS_ACCESS_KEY_ID_TEST,
+  AWS_SECRET_ACCESS_KEY_TEST given the corresponding stack outputs.
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: Storage
+        Parameters:
+          - SiteBucketName
+
+Resources:
+  User:
+    Type: AWS::IAM::User
+    Properties:
+      Policies:
+        - PolicyName: DeploymentPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: AllowBucketObjectUpdates
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::${SiteBucketName}/*
+
+              - Sid: AllowLambdaFunctionUpdates
+                Effect: Allow
+                Action:
+                  - UpdateFunctionCode
+                  - PublishVersion
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+
+              - Sid: AllowStackDescriptionsAndUpdates
+                Effect: Allow
+                Action:
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                Resource: !Sub arn:aws:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/*
+
+              - Sid: AllowTemplateValidation
+                Effect: Allow
+                Action: cloudformation:ValidateTemplate
+                Resource: "*"
+
+  AccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      Status: Active
+      UserName: !Ref User
+
+Outputs:
+  UserArn:
+    Description: IAM user with bucket and stack admin rigths
+    Value: !GetAtt User.Arn
+
+  UserAccessKeyId:
+    Description: Access key id of the IAM user
+    Value: !Ref AccessKey
+
+  UserSecretAccessKey:
+    Description: Secret access key of the IAM user
+    Value: !GetAtt AccessKey.SecretAccessKey

@@ -1,214 +1,227 @@
-# # NOTE: based upon
-# # http://www.daniloaz.com/en/use-gmail-with-your-own-domain-for-free-thanks-to-amazon-ses-lambda/
-# # https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/
-# # and
-# # https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
-# # TODO:
-# # - read about adding a SPF record to a hosted zone
-# AWSTemplateFormatVersion: 2010-09-09
-# Description: mail forwarding service - route53, ses, ... <-> gmail
-# Metadata:
-#   "AWS::CloudFormation::Interface":
-#     ParameterGroups:
-#       - Label:
-#           default: DNS
-#         Parameters:
-#           - DomainName
-#           - HostedZoneId
-#       - Label: 
-#           default: Email
-#         Parameters:
-#           - FromEmail
-#           - ForwardMapping
-#           - EmailKeyPrefix
-# Parameters:
-#   DomainName:
-#     Description: route53 domain fx example.com
-#     Type: String
-#   HostedZoneId:
-#     Description: identifier of your domain's hosted zone
-#     Type: String
-#   FromEmail:
-#     Description: email address to us as sender
-#     Type: String
-#   ForwardMapping:
-#     Description: json document mapping receptions to gmail targets
-#     Type: String
-#   EmailKeyPrefix:
-#     Description: prefix for s3 object keys for emails
-#     Type: String
-#     Default: ""
-# Resources:
-#   # [BEGIN_SECTION DOMAIN_VERIFICATION+DKIM_RECORDS]
-#   # see:
-#   #   https://github.com/binxio/cfn-ses-provider/blob/master/cloudformation/demo-stack.yaml
-#   #   and
-#   #   https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/
-#   DomainIdentity:
-#     Type: Custom::DomainIdentity
-#     Properties:
-#       Domain: !Ref DomainName
-#       Region: !Ref AWS::Region
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
-# 
-#   VerifiedIdentity:
-#     Type: Custom::VerifiedIdentity
-#     DependsOn:
-#       - DkimRecords
-#       - VerificationRecords
-#     Properties:
-#       Identity: !GetAtt DomainIdentity.Domain
-#       Region: !GetAtt DomainIdentity.Region
-#       # Dummy: true ???
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
-# 
-#   VerificationRecords:
-#     Type: AWS::Route53::RecordSetGroup
-#     Properties:
-#         Comment: !Sub SES identity for ${DomainName}
-#         HostedZoneId: !Ref HostedZoneId
-#         RecordSets: !GetAtt DomainIdentity.RecordSets
-# 
-#   DkimTokens:
-#     Type: Custom::DkimTokens
-#     Properties:
-#       Domain: !GetAtt DomainIdentity.Domain
-#       Region: !GetAtt DomainIdentity.Region
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
-# 
-#   DkimRecords:
-#     Type: AWS::Route53::RecordSetGroup
-#     Properties:
-#       Comment: !Sub "DKIM records for ${DomainName}"
-#       HostedZoneId: !Ref HostedZoneId
-#       RecordSets: !GetAtt DkimTokens.RecordSets
-# 
-#   Topic:
-#     Type: AWS::SNS::Topic
-# 
-#   IdentityNotifications:
-#     Type: Custom::IdentityNotifications
-#     Properties:
-#       Identity: !GetAtt VerifiedIdentity.Identity
-#       Region: !GetAtt VerifiedIdentity.Region
-#       BounceTopic: !Ref Topic
-#       ComplaintTopic: !Ref Topic
-#       HeadersInBounceNotificationsEnabled: true
-#       HeadersInComplaintNotificationsEnabled: true
-#       ForwardingEnabled: false
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
-#   # [END_SECTION DOMAIN_VERIFICATION+DKIM_RECORDS]
-# 
-#   # [BEGIN_SECTION FORWARDING_LAMBDA]
-#   # see: https://github.com/arithmetric/aws-lambda-ses-forwarder
-#   Bucket:
-#     Type: AWS::S3::Bucket
-# 
-#   Function:
-#     Type: AWS::Lambda::Function
-#     Properties:
-#       Code:
-#         ZipFile: lambda.zip # zip ./lambda.zip ./index.js
-#       Environment:
-#         Variables:
-#           BUCKET_NAME: !Ref Bucket
-#           FROM_EMAIL: !Ref FromEmail
-#           FORWARD_MAPPING: !Ref ForwardMapping
-#           EMAIL_KEY_PREFIX: !Ref EmailKeyPrefix
-#           SUBJECT_PREFIX: ""
-#       Handler: index.handler
-#       Runtime: nodejs12.x
-#       MemorySize: 512
-#       Timeout: 30
-# 
-#   LambdaExecutionRole:
-#     Type: AWS::IAM::Role
-#     Properties:
-#       AssumeRolePolicyDocument:
-#         Version: 2012-10-17
-#         Statement:
-#           - Effect: Allow
-#             Principal:
-#               Service: lambda.amazonaws.com
-#             Action: sts:AssumeRole
-#       Policies:
-#         - PolicyName: MailForwardingPolicy
-#           PolicyDocument:
-#             Version: 2012-10-17
-#             Statement:
-#               - Effect: Allow
-#                 Action:
-#                   - logs:CreateLogGroup
-#                   - logs:CreateLogStream
-#                   - logs:PutLogEvents
-#                 Resource: arn:aws:logs:*:*:*
-#               - Effect: Allow
-#                 Action: ses:SendRawEmail
-#                 Resource: "*"
-#               - Effect: Allow
-#                 Action:
-#                   - s3:GetObject
-#                   - s3:PutObject
-#                 Resource: !Sub arn:aws:s3:::{Bucket}/*
-#   # [END_SECTION FORWARDING_LAMBDA]
-# 
-#   # [BEGIN_SECTION MAIL_RECEPTION]
-#   # see: https://binx.io/blog/2019/11/25/how-to-set-the-active-receipt-rule-set-in-ses-using-cloudformation/
-#   ReceiptRuleSet:
-#     Type: AWS::SES::ReceiptRuleSet
-#     Properties:
-#       RuleSetName: !Sub ${AWS::StackName}ReceiptRuleSet
-# 
-#   ReceiptRule:
-#     Type: AWS::SES::ReceiptRule
-#     Properties:
-#       Rule:
-#         Actions:
-#           - S3Action:
-#               BucketName: !Ref Bucket
-#               KmsKeyArn: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ses
-#               ObjectKeyPrefix: !Ref EmailKeyPrefix
-#             LambdaAction: 
-#               FunctionArn: !GetAtt Function.Arn
-#               InvocationType: Event
-#         Enabled: true
-#         Recipients: 
-#           - !Ref DomainName
-#         ScanEnabled: true
-#         TlsPolicy: Require
-#       RuleSetName: !Ref ReceiptRuleSet
-# 
-#   ActiveReceiptRuleSet:
-#     Type: Custom::ActiveReceiptRuleSet
-#     Properties:
-#       RuleSetName: !Ref ReceiptRuleSet
-#       Region: !Ref AWS::Region
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
-#   # [END_SECTION MAIL_RECEPTION]
-# 
-#   # [BEGIN_SECTION SMTP_USER]
-#   # see: https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
-#   AccessKey:
-#     Type: Custom::AccessKey
-#     Properties:
-#       Description: !Sub ${AWS::StackName}SMTPUserCredentials
-#       UserName: !Sub ${AWS::StackName}SMTPUser
-#       ParameterPath: !Sub ${AWS::Region}/${AWS::StackName}/SMTPUserCredentials
-#       ReturnPassword: true
-#       ReturnSecret: true
-#       Status: Active
-#       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-secret-provider
-#   # [END_SECTION SMTP_USER]
-# 
-#   # THEN: TODO - configure smtp user credentials in gmail manually..
-# 
-# Outputs:
-#   AccessKeyId:
-#     Description: SMTP user access key id
-#     Value: !GetAtt AccessKey.AccessKeyId
-#   SecretAccessKey:
-#     Description: SMTP user secret access key
-#     Value: !GetAtt AccessKey.SecretAccessKey
-#   SMTPPassword:
-#     Description: SMTP password
-#     Value: !GetAtt AccessKey.SMTPPassword
+# NOTE: based upon
+# http://www.daniloaz.com/en/use-gmail-with-your-own-domain-for-free-thanks-to-amazon-ses-lambda/
+# https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/
+# and
+# https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
+# TODO:
+# - read about adding a SPF record to a hosted zone
+AWSTemplateFormatVersion: 2010-09-09
+Description: mail forwarding service - route53, ses, ... <-> gmail
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: DNS
+        Parameters:
+          - DomainName
+          - HostedZoneId
+      - Label:
+          default: Email
+        Parameters:
+          - FromEmail
+          - ForwardMapping
+          - FunctionName
+          - EmailKeyPrefix
+Parameters:
+  DomainName:
+    Description: route53 domain fx example.com
+    Type: String
+
+  HostedZoneId:
+    Description: identifier of your domain's hosted zone
+    Type: String
+
+  FromEmail:
+    Description: email address to us as sender
+    Type: String
+
+  ForwardMapping:
+    Description: json document mapping receptions to gmail targets
+    Type: String
+
+  FunctionName:
+    Description: lambda function name
+    Type: String
+
+  EmailKeyPrefix:
+    Description: prefix for s3 object keys for emails
+    Type: String
+    Default: ""
+
+Resources:
+  # [BEGIN_SECTION DOMAIN_VERIFICATION+DKIM_RECORDS]
+  # see:
+  #   https://github.com/binxio/cfn-ses-provider/blob/master/cloudformation/demo-stack.yaml
+  #   and
+  #   https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/
+  DomainIdentity:
+    Type: Custom::DomainIdentity
+    Properties:
+      Domain: !Ref DomainName
+      Region: !Ref AWS::Region
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
+
+  VerifiedIdentity:
+    Type: Custom::VerifiedIdentity
+    DependsOn:
+      - DkimRecords
+      - VerificationRecords
+    Properties:
+      Identity: !GetAtt DomainIdentity.Domain
+      Region: !GetAtt DomainIdentity.Region
+      # Dummy: true ???
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
+
+  VerificationRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+        Comment: !Sub SES identity for ${DomainName}
+        HostedZoneId: !Ref HostedZoneId
+        RecordSets: !GetAtt DomainIdentity.RecordSets
+
+  DkimTokens:
+    Type: Custom::DkimTokens
+    Properties:
+      Domain: !GetAtt DomainIdentity.Domain
+      Region: !GetAtt DomainIdentity.Region
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
+
+  DkimRecords:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      Comment: !Sub "DKIM records for ${DomainName}"
+      HostedZoneId: !Ref HostedZoneId
+      RecordSets: !GetAtt DkimTokens.RecordSets
+
+  Topic:
+    Type: AWS::SNS::Topic
+
+  IdentityNotifications:
+    Type: Custom::IdentityNotifications
+    Properties:
+      Identity: !GetAtt VerifiedIdentity.Identity
+      Region: !GetAtt VerifiedIdentity.Region
+      BounceTopic: !Ref Topic
+      ComplaintTopic: !Ref Topic
+      HeadersInBounceNotificationsEnabled: true
+      HeadersInComplaintNotificationsEnabled: true
+      ForwardingEnabled: false
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
+  # [END_SECTION DOMAIN_VERIFICATION+DKIM_RECORDS]
+
+  # [BEGIN_SECTION FORWARDING_LAMBDA]
+  # see: https://github.com/arithmetric/aws-lambda-ses-forwarder
+  Bucket:
+    Type: AWS::S3::Bucket
+
+  Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref FunctionName
+      Code:
+        ZipFile: ""
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref Bucket
+          FROM_EMAIL: !Ref FromEmail
+          FORWARD_MAPPING: !Ref ForwardMapping
+          EMAIL_KEY_PREFIX: !Ref EmailKeyPrefix
+          SUBJECT_PREFIX: ""
+      Handler: forwarder.handler
+      Runtime: nodejs12.x
+      MemorySize: 512
+      Timeout: 30
+
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: MailForwardingPolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: arn:aws:logs:*:*:*
+              - Effect: Allow
+                Action: ses:SendRawEmail
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                Resource: !Sub arn:aws:s3:::{Bucket}/*
+  # [END_SECTION FORWARDING_LAMBDA]
+
+  # [BEGIN_SECTION MAIL_RECEPTION]
+  # see: https://binx.io/blog/2019/11/25/how-to-set-the-active-receipt-rule-set-in-ses-using-cloudformation/
+  ReceiptRuleSet:
+    Type: AWS::SES::ReceiptRuleSet
+    Properties:
+      RuleSetName: !Sub ${AWS::StackName}ReceiptRuleSet
+
+  ReceiptRule:
+    Type: AWS::SES::ReceiptRule
+    Properties:
+      Rule:
+        Actions:
+          - S3Action:
+              BucketName: !Ref Bucket
+              KmsKeyArn: !Sub arn:aws:kms:${AWS::Region}:${AWS::AccountId}:alias/aws/ses
+              ObjectKeyPrefix: !Ref EmailKeyPrefix
+            LambdaAction:
+              FunctionArn: !GetAtt Function.Arn
+              InvocationType: Event
+        Enabled: true
+        Recipients:
+          - !Ref DomainName
+        ScanEnabled: true
+        TlsPolicy: Require
+      RuleSetName: !Ref ReceiptRuleSet
+
+  ActiveReceiptRuleSet:
+    Type: Custom::ActiveReceiptRuleSet
+    Properties:
+      RuleSetName: !Ref ReceiptRuleSet
+      Region: !Ref AWS::Region
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-ses-provider
+  # [END_SECTION MAIL_RECEPTION]
+
+  # [BEGIN_SECTION SMTP_USER]
+  # see: https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
+  AccessKey:
+    Type: Custom::AccessKey
+    Properties:
+      Description: !Sub ${AWS::StackName}SMTPUserCredentials
+      UserName: !Sub ${AWS::StackName}SMTPUser
+      ParameterPath: !Sub ${AWS::Region}/${AWS::StackName}/SMTPUserCredentials
+      ReturnPassword: true
+      ReturnSecret: true
+      Status: Active
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-secret-provider
+  # [END_SECTION SMTP_USER]
+
+  # THEN: TODO - configure smtp user credentials in gmail manually..
+
+Outputs:
+  AccessKeyId:
+    Description: SMTP user access key id
+    Value: !GetAtt AccessKey.AccessKeyId
+
+  SecretAccessKey:
+    Description: SMTP user secret access key
+    Value: !GetAtt AccessKey.SecretAccessKey
+
+  SMTPPassword:
+    Description: SMTP password
+    Value: !GetAtt AccessKey.SMTPPassword

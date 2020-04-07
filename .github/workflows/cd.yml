@@ -1,14 +1,6 @@
 # TODO:
-#create a separate stack for the deploying iam user per env!
-#2preset their creds as github secrets!
+#2preset aws test n prod creds as github secrets!
 #rewwrite docs
-
-# this template assumes that the
-# corresponding stack has initially been created. Moreover, this template relies
-# on two secrets: AWS_ACCESS_KEY_ID_TEST_(PROD|TEST), AWS_SECRET_ACCESS_KEY_(PROD|TEST). These must
-# be the security credentials of the iam user included in the stack - for the given environment Get the
-# credentials from the iam console. Lastly, this template assumes that the
-# stack is called $SITE_STACK_NAME - see env.
 
 name: continous deployment
 
@@ -27,7 +19,8 @@ env:
   MAIL_STACK_NAME: nugget-email-stack
   SECRET_PROVIDER_STACK_NAME: nugget-secret-provider
   SES_PROVIDER_STACK_NAME: nugget-ses-provider
-  BUCKET_NAME: "<will be set by the deploy_site_stack job>"
+  SITE_BUCKET_NAME: nugget-website-stack-bucket-419
+  MAIL_FUNCTION_NAME: nugget-email-stack-function-419
   SHARED_CREDENTIALS_FILE_TEMPLATE: "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n"
 
 jobs:
@@ -79,6 +72,8 @@ jobs:
       - deploy_custom_resources
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2.0.0
+
       - name: mail stack deployment
         run: |
           aws cloudformation deploy \
@@ -87,10 +82,20 @@ jobs:
             --parameter-overrides \
               DomainName=nugget.digital \
               HostedZoneId=TODO \
+              FunctionName=${{ env.MAIL_FUNCTION_NAME }} \
               FromEmail=hello@nugget.digital \
               ForwardMapping='{"@nugget.digital":["nugget.digital@gmail.com"]}' \
               EmailKeyPrefix="" \
             --capabilities=CAPABILITY_IAM
+
+      - name: update the lambda function
+        run: |
+          temp_zip=$(mktemp --suffix=.zip)
+          zip -j $temp_zip ./stacks/mail/forwarder.js
+          aws lambda update-function-code \
+            --function-name=${{ env.MAIL_FUNCTION_NAME }} \
+            --publish \
+            --zip-file=fileb://$temp_zip
 
   deploy_site_stack:
     name: site stack deployment
@@ -106,17 +111,9 @@ jobs:
           aws cloudformation deploy \
             --stack-name=${{ env.SITE_STACK_NAME }} \
             --template-file=./stacks/site/stack.yml \
+            --parameter-overrides \
+              BucketName=${{ env.SITE_BUCKET_NAME }} \
             --capabilities=CAPABILITY_IAM
 
-      - name: determine the web stack's bucket name
-        run: |
-          _BUCKET_NAME="$( \
-            aws cloudformation describe-stack-resources \
-              --stack-name=${{ env.SITE_STACK_NAME }} \
-            | \
-            jq '.StackResources[] | select(.ResourceType == "AWS::S3::Bucket") | .PhysicalResourceId' \
-          )"
-          echo "::set-env name=BUCKET_NAME::$_BUCKET_NAME"
-
       - name: update the website content
-        run: aws s3 cp ./stacks/site/index.html s3://${{ env.BUCKET_NAME }}/index.html
+        run: aws s3 cp ./stacks/site/index.html s3://${{ env.SITE_BUCKET_NAME }}/index.html
