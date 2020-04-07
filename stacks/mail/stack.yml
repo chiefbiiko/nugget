@@ -6,7 +6,7 @@
 # TODO:
 # - read about adding a SPF record to a hosted zone
 AWSTemplateFormatVersion: 2010-09-09
-Description: mail forwarding service - route53, ses, ... <-> gmail
+Description: mail forwarding service - route53, ses, ... <-> gmail (prod only)
 Metadata:
   "AWS::CloudFormation::Interface":
     ParameterGroups:
@@ -20,7 +20,6 @@ Metadata:
         Parameters:
           - FromEmail
           - ForwardMapping
-          - FunctionName
           - EmailKeyPrefix
 Parameters:
   DomainName:
@@ -37,10 +36,6 @@ Parameters:
 
   ForwardMapping:
     Description: json document mapping receptions to gmail targets
-    Type: String
-
-  FunctionName:
-    Description: lambda function name
     Type: String
 
   EmailKeyPrefix:
@@ -117,7 +112,6 @@ Resources:
   Function:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Ref FunctionName
       Code:
         ZipFile: ""
       Environment:
