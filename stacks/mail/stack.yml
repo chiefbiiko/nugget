@@ -1,10 +1,3 @@
-# NOTE: based upon
-# http://www.daniloaz.com/en/use-gmail-with-your-own-domain-for-free-thanks-to-amazon-ses-lambda/
-# https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/
-# and
-# https://binx.io/blog/2018/03/17/deploying-aws-ses-access-key-and-smtp-password-using-aws-cloudformation/
-# TODO:
-# - read about adding a SPF record to a hosted zone
 AWSTemplateFormatVersion: 2010-09-09
 Description: mail forwarding service - route53, ses, ... <-> gmail (prod only)
 Metadata:
