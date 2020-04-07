@@ -124,7 +124,7 @@ Resources:
           MinimumProtocolVersion: TLSv1.2_2018
           SSLSupportMethod: sni-only
 
-  RecordSet:
+  DistributionRecordSet:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
@@ -136,10 +136,36 @@ Resources:
         DNSName: !GetAtt Distribution.DomainName
 
   Certificate:
-    Type: AWS::CertificateManager::Certificate
+    Type: Custom::Certificate
     Properties:
       DomainName: !Ref Domain
       ValidationMethod: DNS
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider
+
+  IssuedCertificate:
+    Type: Custom::IssuedCertificate
+    Properties:
+      CertificateArn: !Ref Certificate
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider
+
+  CertificateDNSRecord:
+    Type: Custom::CertificateDNSRecord
+    Properties:
+      CertificateArn: !Ref Certificate
+      DomainName: !Ref Domain
+      ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider
+
+  DomainValidationRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !GetAtt CertificateDNSRecord.Name
+      Type: !GetAtt CertificateDNSRecord.Type
+      TTL: 60
+      Weight: 1
+      SetIdentifier: !Ref Certificate
+      ResourceRecords:
+        - !GetAtt CertificateDNSRecord.Value
 
 Outputs:
   DistributionDomainName:

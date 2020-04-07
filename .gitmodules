@@ -4,3 +4,6 @@
 [submodule "stacks/custom-resources/cfn-ses-provider"]
 	path = stacks/custom-resources/cfn-ses-provider
 	url = https://github.com/binxio/cfn-ses-provider.git
+[submodule "stacks/custom-resources/cfn-certificate-provider"]
+	path = stacks/custom-resources/cfn-certificate-provider
+	url = https://github.com/binxio/cfn-certificate-provider
