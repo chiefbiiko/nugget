@@ -2,6 +2,11 @@
 
 everything related to nugget's infrastructure
 
+## todo
+
+* write an org account setup bash script
+* recheck how to add a spf record to the domains
+
 ## stacks
 
 ### `custom-resources`
@@ -15,7 +20,7 @@ these custom resources are a dependency of the mail stack
 both are provided by [`binx.io`](https://github.com/binxio) and included as a
 `git` submodule.
 
-make sure to `git pull --ff-only` their upstream changes from time to time.
+**NOTE** make sure to update the submodules from time to time.
 
 ### `depl`
 
@@ -34,9 +39,13 @@ stack outputs.
 
 a website distribution stack using a route53 domain.
 
+the `test` and `prod` aws accounts exhibit identical `site` stacks.
+
 ### `mail`
 
 a bike-shed domain mail stack as a proxy between route53 and gmail.
+
+**TODO** the `test` and `prod` aws accounts **shall** exhibit identical `mail` stacks.
 
 ### misc docs
 

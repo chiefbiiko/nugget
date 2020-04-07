@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
-  continuous deployment setup providing one user to maintain all nugget
+  Continuous deployment setup providing one user to maintain all nugget
   stacks. this template's outputs provide the aws credentials that are
   prerequisites for performing the stack updates. Make sure to manually
   deploy this stack to the test and prod account, then set the github secrets

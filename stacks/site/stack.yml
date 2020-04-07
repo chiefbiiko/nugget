@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: website distribution stack using a route53 domain
+Description: Website distribution stack using a route53 domain
 Metadata:
   "AWS::CloudFormation::Interface":
     ParameterGroups:
       - Label:
           default: DNS
         Parameters:
-          - Domain
+          - DomainName
           - HostedZoneId
       - Label:
           default: CDN
@@ -88,7 +88,7 @@ Resources:
     Properties:
       DistributionConfig:
         Aliases:
-          - !Ref Domain
+          - !Ref DomainName
         DefaultCacheBehavior:
           AllowedMethods:
             - GET
@@ -128,7 +128,7 @@ Resources:
     Type: AWS::Route53::RecordSet
     Properties:
       HostedZoneId: !Ref HostedZoneId
-      Name: !Ref Domain
+      Name: !Ref DomainName
       Type: A
       AliasTarget:
         # Below zone id is used for any CloudFront Distribution
@@ -138,7 +138,7 @@ Resources:
   Certificate:
     Type: Custom::Certificate
     Properties:
-      DomainName: !Ref Domain
+      DomainName: !Ref DomainName
       ValidationMethod: DNS
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider
 
@@ -152,7 +152,7 @@ Resources:
     Type: Custom::CertificateDNSRecord
     Properties:
       CertificateArn: !Ref Certificate
-      DomainName: !Ref Domain
+      DomainName: !Ref DomainName
       ServiceToken: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider
 
   DomainValidationRecordSet:
@@ -178,4 +178,4 @@ Outputs:
 
   URL:
     Description: URL of your website
-    Value: !Sub https://${Domain}
+    Value: !Sub https://${DomainName}

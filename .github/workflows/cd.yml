@@ -10,29 +10,36 @@ on:
       - .github/workflows/cd.yml
 
 env:
+  HOSTED_ZONE_ID: TODO
+  DOMAIN_NAME: "will be set by the configure job"
   AWS_REGION: eu-west-3
+  CDN_DEFAULT_TTL: 3600
+  CDN_MAX_TTL: 7200
+  CDN_MIN_TTL: 1800
+  CDN_ROOT_OBJECT: index.html
   SITE_STACK_NAME: nugget-website-stack
   MAIL_STACK_NAME: nugget-email-stack
   SECRET_PROVIDER_STACK_NAME: nugget-secret-provider
   SES_PROVIDER_STACK_NAME: nugget-ses-provider
   SITE_BUCKET_NAME: nugget-website-stack-bucket-419
   MAIL_FUNCTION_NAME: nugget-email-stack-function-419
-  SHARED_CREDENTIALS_FILE_TEMPLATE: "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n"
 
 jobs:
-  configure_aws_credentials:
+  configure:
     runs-on: ubuntu-latest
     steps:
       run: |
         if [[ ${{ github.ref }} == "master" ]]; then \
+          echo ::set-env name=DOMAIN_NAME::nugget.digital
           printf \
-            "$SHARED_CREDENTIALS_FILE_TEMPLATE" \
+            "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
             ${{ secrets.AWS_ACCESS_KEY_ID_PROD }} \
             ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }} \
           > $HOME/.aws/credentials
         else
+          echo ::set-env name=DOMAIN_NAME::test.nugget.digital
           printf \
-            "$SHARED_CREDENTIALS_FILE_TEMPLATE" \
+            "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
             ${{ secrets.AWS_ACCESS_KEY_ID_TEST }} \
             ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }} \
           > $HOME/.aws/credentials
@@ -40,13 +47,13 @@ jobs:
 
   deploy_custom_resources:
     name: custom resources deployment
-    if: endsWith(github.ref, 'master')
-    needs: configure_aws_credentials
+    needs: configure
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.0.0
 
       - name: deploy ses-provider custom resources
+        if: endsWith(github.ref, 'master')
         run: |
           aws cloudformation deploy \
             --stack-name=${{ env.SES_PROVIDER_STACK_NAME }} \
@@ -54,17 +61,24 @@ jobs:
             --capabilities=CAPABILITY_IAM
 
       - name: deploy secret-provider custom resources
+        if: endsWith(github.ref, 'master')
         run: |
           aws cloudformation deploy \
             --stack-name=${{ env.SECRET_PROVIDER_STACK_NAME }} \
             --template-file=./stacks/custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
             --capabilities=CAPABILITY_IAM
 
+      - name: deploy certificate-provider custom resources
+        run: |
+          aws cloudformation deploy \
+            --stack-name=${{ env.CERTIFICATE_PROVIDER_STACK_NAME }} \
+            --template-file=./stacks/custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
+            --capabilities=CAPABILITY_IAM
+
   deploy_mail_stack:
     name: mail stack deployment
-    if: endsWith(github.ref, 'master')
     needs:
-      - configure_aws_credentials
+      - configure
       - deploy_custom_resources
     runs-on: ubuntu-latest
     steps:
@@ -76,11 +90,11 @@ jobs:
             --stack-name=${{ env.MAIL_STACK_NAME }} \
             --template-file=./stacks/mail/stack.yml \
             --parameter-overrides \
-              DomainName=nugget.digital \
-              HostedZoneId=TODO \
+              DomainName=${{ env.DOMAIN_NAME }} \
+              HostedZoneId=${{ env.HOSTED_ZONE_ID }} \
               FunctionName=${{ env.MAIL_FUNCTION_NAME }} \
-              FromEmail=hello@nugget.digital \
-              ForwardMapping='{"@nugget.digital":["nugget.digital@gmail.com"]}' \
+              FromEmail=hello@${{ env.DOMAIN_NAME }} \
+              ForwardMapping="{\"@${{ env.DOMAIN_NAME }}\":[\"${{ env.DOMAIN_NAME }}@gmail.com\"]}" \
               EmailKeyPrefix="" \
             --capabilities=CAPABILITY_IAM
 
@@ -95,6 +109,9 @@ jobs:
 
   deploy_site_stack:
     name: site stack deployment
+    needs:
+      - configure
+      - deploy_custom_resources
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2.0.0
@@ -109,7 +126,14 @@ jobs:
             --template-file=./stacks/site/stack.yml \
             --parameter-overrides \
               BucketName=${{ env.SITE_BUCKET_NAME }} \
+              DomainName=${{ env.DOMAIN_NAME }} \
+              HostedZoneId=${{ env.HOSTED_ZONE_ID }} \
+              DefaultRootObject=${{ env.CDN_ROOT_OBJECT }} \
+              DefaultTTL=${{ env.CDN_DEFAULT_TTL }} \
+              MaxTTL=${{ env.CDN_MAX_TTL }} \
+              MinTTL=${{ env.CDN_MIN_TTL }} \
             --capabilities=CAPABILITY_IAM
 
       - name: update the website content
+        # TODO: prefetch checksum n only upload if diff
         run: aws s3 cp ./stacks/site/index.html s3://${{ env.SITE_BUCKET_NAME }}/index.html
