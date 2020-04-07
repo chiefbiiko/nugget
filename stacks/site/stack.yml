@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: website distribution stack using a Route53 domain
+Description: website distribution stack using a route53 domain
 Metadata:
   "AWS::CloudFormation::Interface":
     ParameterGroups:
@@ -142,18 +142,14 @@ Resources:
       ValidationMethod: DNS
 
 Outputs:
-  StackName:
-    Description: CloudFormation stack name
-    Value: !Ref AWS::StackName
-  BucketName:
-    Description: S3 bucket name
-    Value: !Ref Bucket
   DistributionDomainName:
     Description: CloudFront distribution domain name
     Value: !GetAtt Distribution.DomainName
+
   CertificateArn:
     Description: ACM TLS certificate
     Value: !Ref Certificate
+
   URL:
     Description: URL of your website
     Value: !Sub https://${Domain}

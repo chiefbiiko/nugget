@@ -1,7 +1,3 @@
-# TODO:
-#2preset aws test n prod creds as github secrets!
-#rewwrite docs
-
 name: continous deployment
 
 on:
