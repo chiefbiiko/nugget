@@ -11,14 +11,15 @@ everything related to nugget's infrastructure
 
 ### `custom-resources`
 
-these custom resources are a dependency of the mail stack
+these custom resources are dependencies of the `mail` and `site` stacks:
+
+* [`cfn-certificate-provider`](https://github.com/binxio/cfn-certificate-provider)
 
 * [`cfn-secret-provider`](https://github.com/binxio/cfn-secret-provider)
 
 * [`cfn-ses-provider`](https://github.com/binxio/cfn-ses-provider)
 
-both are provided by [`binx.io`](https://github.com/binxio) and included as a
-`git` submodule.
+all of these are provided by [`binx.io`](https://github.com/binxio) and included as `git` submodules.
 
 **NOTE** make sure to update the submodules from time to time.
 
