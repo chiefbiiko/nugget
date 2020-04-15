@@ -4,7 +4,7 @@ everything related to nugget's infrastructure
 
 ## todo
 
-* write an org account setup bash script
+* complete dns setup bash script
 * recheck how to add a spf record to the domains
 
 ## stacks
