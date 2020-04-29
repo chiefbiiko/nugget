@@ -28,22 +28,23 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     steps:
-      run: |
-        if [[ ${{ github.ref }} == "master" ]]; then \
-          echo ::set-env name=DOMAIN_NAME::nugget.digital
-          printf \
-            "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
-            ${{ secrets.AWS_ACCESS_KEY_ID_PROD }} \
-            ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }} \
-          > $HOME/.aws/credentials
-        else
-          echo ::set-env name=DOMAIN_NAME::test.nugget.digital
-          printf \
-            "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
-            ${{ secrets.AWS_ACCESS_KEY_ID_TEST }} \
-            ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }} \
-          > $HOME/.aws/credentials
-        fi
+      - name: set aws credentials and the DOMAIN_NAME env var
+        run: |
+          if [[ ${{ github.ref }} == "master" ]]; then \
+            echo ::set-env name=DOMAIN_NAME::nugget.digital
+            printf \
+              "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
+              ${{ secrets.AWS_ACCESS_KEY_ID_PROD }} \
+              ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }} \
+            > $HOME/.aws/credentials
+          else
+            echo ::set-env name=DOMAIN_NAME::test.nugget.digital
+            printf \
+              "[default]\naws_access_key_id=%s\naws_secret_access_key=%s\n" \
+              ${{ secrets.AWS_ACCESS_KEY_ID_TEST }} \
+              ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }} \
+            > $HOME/.aws/credentials
+          fi
 
   deploy_custom_resources:
     name: custom resources deployment
@@ -53,7 +54,7 @@ jobs:
       - uses: actions/checkout@v2.0.0
 
       - name: deploy ses-provider custom resources
-        if: endsWith(github.ref, 'master')
+        # if: endsWith(github.ref, 'master')
         run: |
           aws cloudformation deploy \
             --stack-name=${{ env.SES_PROVIDER_STACK_NAME }} \
@@ -61,7 +62,7 @@ jobs:
             --capabilities=CAPABILITY_IAM
 
       - name: deploy secret-provider custom resources
-        if: endsWith(github.ref, 'master')
+        # if: endsWith(github.ref, 'master')
         run: |
           aws cloudformation deploy \
             --stack-name=${{ env.SECRET_PROVIDER_STACK_NAME }} \
@@ -72,7 +73,7 @@ jobs:
         run: |
           aws cloudformation deploy \
             --stack-name=${{ env.CERTIFICATE_PROVIDER_STACK_NAME }} \
-            --template-file=./stacks/custom-resources/cfn-secret-provider/cloudformation/cfn-custom-resource-provider.json \
+            --template-file=./stacks/custom-resources/cfn-certificate-provider/cloudformation/cfn-custom-resource-provider.json \
             --capabilities=CAPABILITY_IAM
 
   deploy_mail_stack:

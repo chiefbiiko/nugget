@@ -116,6 +116,7 @@ Resources:
           SUBJECT_PREFIX: ""
       Handler: forwarder.handler
       Runtime: nodejs12.x
+      # TODO: expose as params - also to github actions cd wordflows
       MemorySize: 512
       Timeout: 30
 
