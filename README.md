@@ -48,6 +48,10 @@ a bike-shed domain mail stack as a proxy between route53 and gmail.
 
 **TODO** the `test` and `prod` aws accounts **shall** exhibit identical `mail` stacks.
 
+### cd
+
+launching deployments from github actions with the test branch installing to the aws test account and the master branch installing to the aws prod account.
+
 ### misc docs
 
 * https://binx.io/blog/2019/11/14/how-to-deploy-aws-ses-domain-identities-dkim-records-using-cloudformation/

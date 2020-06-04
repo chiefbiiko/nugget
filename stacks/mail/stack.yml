@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Mail forwarding service - route53, ses, ... <-> gmail (prod only)
+Description: Mail forwarding service - route53, ses, ... <-> gmail
 Metadata:
   "AWS::CloudFormation::Interface":
     ParameterGroups:

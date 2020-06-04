@@ -10,7 +10,7 @@ on:
       - .github/workflows/cd.yml
 
 env:
-  HOSTED_ZONE_ID: TODO
+  HOSTED_ZONE_ID: "TODO: should be set by the configure job"
   DOMAIN_NAME: "will be set by the configure job"
   AWS_REGION: eu-west-3
   CDN_DEFAULT_TTL: 3600

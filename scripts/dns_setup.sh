@@ -12,17 +12,18 @@ note: make sure the prod account $PROD_ACCOUNT_ID owns the domain $DOMAIN
 EOF
 
 # TODO: prep all zone and domain names carefully (prefix, trailiing dot, etc.)
-test_zone_name=TODO
-prod_zone_name=TODO
-test_domain_name=TODO
-prod_domain_name=TODO
+test_domain_name="test.$DOMAIN"
+prod_domain_name=$DOMAIN
+test_zone_name="$test_domain_name."
+prod_zone_name="$prod_domain_name."
+
 # TODO: prep caller references
 prod_zone_caller_reference="prod_$(date +%s)"
 test_zone_caller_reference="test_$(date +%s)"
 
-
-
 # TODO: auth with test account & create a hosted zone for the test account and record its NS servers TODO
+
+
 # TODO: auth with prod account & create a hosted zone (if not existing) for the prod account
 # TODO: create a NS record with key "test.$domain" and as value the four NS
 #   servers of the fresh test hosted zone in the prod hosted zone
