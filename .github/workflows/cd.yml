@@ -23,6 +23,8 @@ env:
   SES_PROVIDER_STACK_NAME: nugget-ses-provider
   SITE_BUCKET_NAME: nugget-website-stack-bucket-419
   MAIL_FUNCTION_NAME: nugget-email-stack-function-419
+  LAMBDA_MEMORY_SIZE: 512
+  LAMBDA_TIMEOUT: 30
 
 jobs:
   configure:
@@ -97,6 +99,8 @@ jobs:
               FromEmail=hello@${{ env.DOMAIN_NAME }} \
               ForwardMapping="{\"@${{ env.DOMAIN_NAME }}\":[\"${{ env.DOMAIN_NAME }}@gmail.com\"]}" \
               EmailKeyPrefix="" \
+              LambdaMemorySize=${{ env.LAMBDA_MEMORY_SIZE }} \
+              LambdaTimeout=${{ env.LAMBDA_TIMEOUT }} \
             --capabilities=CAPABILITY_IAM
 
       - name: update the lambda function
