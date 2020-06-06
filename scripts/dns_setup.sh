@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 
-set -o pipefail
+# TODO
+# - endless loop break
+# - printf all the time!
+
+set -Eeo pipefail
 
 function help {
   printf "warning: run this once only for dns initialization!
@@ -33,21 +37,25 @@ fi
 
 set -u
 
-exit
-
-# TODO: printf all the time!
+exit 1
 
 aws sts assume-role \
   --role-arn="arn:aws:iam::$test_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=test_dns_oaar
 
-test_hosted_zone="$(
+test_create_hosted_zone_output="$(
   aws route53 create-hosted-zone \
     --name="$test_domain." \
     --caller-reference="test_$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 )"
 
-test_name_servers="$(jq -r '.DelegationSet.NameServers[]' <<< $test_hosted_zone)"
+test_hosted_zone_id="$(
+  jq '.HostedZone.Id' <<< "$test_create_hosted_zone_output"
+)"
+
+test_name_servers="$(
+  jq -r '.DelegationSet.NameServers[]' <<< $test_create_hosted_zone_output
+)"
 
 aws sts assume-role \
   --role-arn="arn:aws:iam::$prod_account_id:role/OrganizationAccountAccessRole" \
@@ -57,7 +65,7 @@ prod_hosted_zones=$(
   aws route53 list-hosted-zones \
     --max-items=1 \
     --output=json \
-    --query='.HostedZones'
+    --query='HostedZones'
 )
 
 prod_hosted_zones_count=$(jq 'length' <<< "$prod_hosted_zones")
@@ -68,11 +76,11 @@ if [[ "$prod_hosted_zone_count" == "0" ]]; then
       --name="$prod_domain." \
       --caller-reference="prod_$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
       --output=json \
-      --query='.HostedZone.Id'
+      --query='HostedZone.Id'
   )"
 else
   prod_hosted_zone="$(
-    jq ".HostedZones[] | select(.Name == \"$prod_domain.\")" <<< "$prod_hosted_zones"
+    jq ".[] | select(.Name == \"$prod_domain.\")" <<< "$prod_hosted_zones"
   )"
 
   if [[ -n "$prod_hosted_zone" ]]; then 
@@ -83,7 +91,7 @@ else
   fi
 fi
 
-RECORDS='{
+RECORDS_TEMPLATE='{
   "Comment": "NS record pointing to the test subdomain",
   "Changes": [
     {
@@ -102,8 +110,31 @@ RECORDS='{
   ]
 }'
 
-aws route53 change-resource-record-sets \
-  --hosted-zone-id="$prod_hosted_zone_id" \
-  --change-batch="$(printf "$RECORDS" "$test_domain" "$test_name_servers")"
+printf -v change_batch "$RECORDS_TEMPLATE" "$test_domain" "$test_name_servers"
 
-# TODO: print hosted zone ids
+change_info_id="$(
+  aws route53 change-resource-record-sets \
+    --hosted-zone-id="$prod_hosted_zone_id" \
+    --change-batch="$change_batch" \
+    --output=json \
+    --query='ChangeInfo.Id'
+)"
+
+while : ; do
+  change_batch_status="$(
+    aws route53 get-change \
+      --id="$change_info_id" \
+      --output=json \
+      --query='ChangeInfo.Status'
+  )"
+
+  if [[ "$change_batch_status" == "INSYNC" ]]; then
+    break
+  else
+    sleep 4.19
+  fi
+done
+
+printf "aws hosted zone ids\ntest: %s\nprod: %s\n" \
+  "$test_hosted_zone_id" \
+  "$prod_hosted_zone_id"
