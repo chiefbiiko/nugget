@@ -37,22 +37,18 @@ exit
 
 # TODO: printf all the time!
 
-# TODO: auth with test account & create a hosted zone for the test account and record its NS servers TODO
 aws sts assume-role \
   --role-arn="arn:aws:iam::$test_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=test_dns_oaar
 
-# TODO: capture ns servers from HostedZone output structure
-# https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/AboutHZWorkingWith.html
 test_hosted_zone="$(
   aws route53 create-hosted-zone \
     --name="$test_domain." \
     --caller-reference="test_$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 )"
 
-test_ns="$(jq -r '.DelegationSet.NameServers[]' <<< $test_hosted_zone)"
+test_name_servers="$(jq -r '.DelegationSet.NameServers[]' <<< $test_hosted_zone)"
 
-# TODO: auth with prod account & create a hosted zone (if not existing) for the prod account
 aws sts assume-role \
   --role-arn="arn:aws:iam::$prod_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=prod_dns_oaar
@@ -64,7 +60,7 @@ prod_hosted_zones=$(
     --query='.HostedZones'
 )
 
-prod_hosted_zones_count="$(jq 'length' <<< "$prod_hosted_zones")"
+prod_hosted_zones_count=$(jq 'length' <<< "$prod_hosted_zones")
 
 if [[ "$prod_hosted_zone_count" == "0" ]]; then
   prod_hosted_zone_id="$(
@@ -75,16 +71,18 @@ if [[ "$prod_hosted_zone_count" == "0" ]]; then
       --query='.HostedZone.Id'
   )"
 else
-  # TODO
-  # find hosted zone with "$prod_domain."
-  prod_hosted_zone="$(jq ".HostedZones[] | select(.Name == '$prod_domain.')" <<< "$prod_hosted_zones")"
-  #if ffound  extract its id
-  
-  prod_hosted_zone_id=""
+  prod_hosted_zone="$(
+    jq ".HostedZones[] | select(.Name == \"$prod_domain.\")" <<< "$prod_hosted_zones"
+  )"
+
+  if [[ -n "$prod_hosted_zone" ]]; then 
+      prod_hosted_zone_id="$(jq '.Id' <<< "$prod_hosted_zone")"
+  else
+    printf "error: unable to fetch the prod hosted zone id\n" >&2
+    exit 1
+  fi
 fi
 
-# TODO: create a NS record with key "test.$domain" and as value the four NS
-#   servers of the fresh test hosted zone in the prod hosted zone
 RECORDS='{
   "Comment": "NS record pointing to the test subdomain",
   "Changes": [
@@ -106,6 +104,6 @@ RECORDS='{
 
 aws route53 change-resource-record-sets \
   --hosted-zone-id="$prod_hosted_zone_id" \
-  --change-batch="$(printf "$RECORDS" "$test_domain" "$test_ns")"
+  --change-batch="$(printf "$RECORDS" "$test_domain" "$test_name_servers")"
 
 # TODO: print hosted zone ids
