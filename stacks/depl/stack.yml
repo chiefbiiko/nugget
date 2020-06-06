@@ -14,6 +14,8 @@ Metadata:
         Parameters:
           - SiteBucketName
 
+# TODO: Parameters section
+
 Resources:
   User:
     Type: AWS::IAM::User

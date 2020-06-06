@@ -39,6 +39,7 @@ jobs:
               ${{ secrets.AWS_ACCESS_KEY_ID_PROD }} \
               ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }} \
             > $HOME/.aws/credentials
+            # TODO: fetch&set hosted zone id if there is only one else error
           else
             echo ::set-env name=DOMAIN_NAME::test.nugget.digital
             printf \
@@ -46,6 +47,7 @@ jobs:
               ${{ secrets.AWS_ACCESS_KEY_ID_TEST }} \
               ${{ secrets.AWS_SECRET_ACCESS_KEY_TEST }} \
             > $HOME/.aws/credentials
+            # TODO: fetch&set hosted zone id if there is only one else error
           fi
 
   deploy_custom_resources:
