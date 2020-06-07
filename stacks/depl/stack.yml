@@ -12,9 +12,14 @@ Metadata:
       - Label:
           default: Storage
         Parameters:
-          - SiteBucketName
+          - WebsiteBucketName
 
-# TODO: Parameters section
+Parameters:
+  WebsiteBucketName:
+    Description: S3 website bucket name
+    Type: String
+    # NOTE: the default needs to stay in sync with $SITE_BUCKET_NAME in cd.yml
+    Default: nugget-website-stack-bucket-419
 
 Resources:
   User:
@@ -30,7 +35,7 @@ Resources:
                 Action:
                   - s3:GetObject
                   - s3:PutObject
-                Resource: !Sub arn:aws:s3:::${SiteBucketName}/*
+                Resource: !Sub arn:aws:s3:::${WebsiteBucketName}/*
 
               - Sid: AllowLambdaFunctionUpdates
                 Effect: Allow

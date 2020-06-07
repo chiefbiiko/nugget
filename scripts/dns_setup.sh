@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO
-# - endless loop break
-# - printf all the time!
-
 set -Eeo pipefail
 
 function help {
@@ -39,9 +35,13 @@ set -u
 
 exit 1
 
+printf "assuming the OrganizationAccountAccessRole for the test account..\n"
+
 aws sts assume-role \
   --role-arn="arn:aws:iam::$test_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=test_dns_oaar
+
+printf "creating a hosted zone for the test account..\n"
 
 test_create_hosted_zone_output="$(
   aws route53 create-hosted-zone \
@@ -57,9 +57,13 @@ test_name_servers="$(
   jq -r '.DelegationSet.NameServers[]' <<< $test_create_hosted_zone_output
 )"
 
+printf "assuming the OrganizationAccountAccessRole for the prod account..\n"
+
 aws sts assume-role \
   --role-arn="arn:aws:iam::$prod_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=prod_dns_oaar
+
+printf "checking whether a hosted zone exists in the prod account..\n"
 
 prod_hosted_zones=$(
   aws route53 list-hosted-zones \
@@ -71,6 +75,8 @@ prod_hosted_zones=$(
 prod_hosted_zones_count=$(jq 'length' <<< "$prod_hosted_zones")
 
 if [[ "$prod_hosted_zone_count" == "0" ]]; then
+  printf "creating a hosted zone for the prod account..\n"
+  
   prod_hosted_zone_id="$(
     aws route53 create-hosted-zone \
       --name="$prod_domain." \
@@ -112,6 +118,8 @@ RECORDS_TEMPLATE='{
 
 printf -v change_batch "$RECORDS_TEMPLATE" "$test_domain" "$test_name_servers"
 
+printf "adding a ns record for the test domain to the prod hosted zone..\n"
+
 change_info_id="$(
   aws route53 change-resource-record-sets \
     --hosted-zone-id="$prod_hosted_zone_id" \
@@ -119,6 +127,8 @@ change_info_id="$(
     --output=json \
     --query='ChangeInfo.Id'
 )"
+
+printf "waiting for the ns record to be in sync..\n"
 
 while : ; do
   change_batch_status="$(

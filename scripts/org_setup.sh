@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-# TODO
-# - endless loop breaks
-
 set -o pipefail
 
 function help {
@@ -64,6 +61,8 @@ create_account_request_id="$(
     --query='CreateAccountStatus.Id'
 )"
 
+printf "awaiting the test account creation..\n"
+
 while : ; do
   test_account_id="$(
     aws organizations describe-create-account-status \
@@ -89,6 +88,8 @@ create_account_request_id="$(
     --output=json \
     --query='CreateAccountStatus.Id'
 )"
+
+printf "awaiting the prod account creation..\n"
 
 while : ; do
   prod_account_id="$(
