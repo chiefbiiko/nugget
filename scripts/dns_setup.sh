@@ -28,7 +28,7 @@ esac; done
 
 if [[ -z "$prod_domain" ]] || [[ -z "$test_domain" ]] || 
    [[ -z "$test_account_id" ]] || [[ -z "$prod_account_id" ]]; then
-  help; exit 0;
+  help; exit 1;
 fi
 
 set -u

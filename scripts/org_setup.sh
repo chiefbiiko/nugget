@@ -20,7 +20,7 @@ while [[ $# -ne 0 ]]; do case $1 in
 esac; done
 
 if [[ -z "$prod_email" ]] || [[ -z "$test_email" ]]; then
-  help; exit 0;
+  help; exit 1;
 fi
 
 printf "info: making sure no organization exists..\n"
@@ -38,7 +38,12 @@ printf "creating an organization..\n"
 
 aws organizations create-organization --feature-set=ALL
 
-root_ou_id="$(aws organizations list-roots --max-items=1 | jq '.Roots[].Id')"
+root_ou_id="$(
+  aws organizations list-roots \
+    --max-items=1 \
+    --output=json \
+    --query='Roots[0].Id'
+)"
 
 printf "creating an engineering ou..\n"
 
