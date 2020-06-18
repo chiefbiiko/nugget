@@ -40,22 +40,46 @@ printf "assuming the OrganizationAccountAccessRole for the test account..\n"
 aws sts assume-role \
   --role-arn="arn:aws:iam::$test_account_id:role/OrganizationAccountAccessRole" \
   --role-session-name=test_dns_oaar
+  
+printf "checking whether a hosted zone exists in the test account..\n"
 
-printf "creating a hosted zone for the test account..\n"
-
-test_create_hosted_zone_output="$(
-  aws route53 create-hosted-zone \
-    --name="$test_domain." \
-    --caller-reference="test_$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+test_hosted_zones="$(
+  aws route53 list-hosted-zones \
+    --max-items=1 \
+    --output=json \
+    --query='HostedZones'
 )"
 
-test_hosted_zone_id="$(
-  jq '.HostedZone.Id' <<< "$test_create_hosted_zone_output"
-)"
+test_hosted_zones_count="$(jq 'length' <<< "$test_hosted_zones")"
 
-test_name_servers="$(
-  jq -r '.DelegationSet.NameServers[]' <<< $test_create_hosted_zone_output
-)"
+if [[ "$test_hosted_zone_count" == "0" ]]; then
+  printf "creating a hosted zone for the test account..\n"
+  
+  test_create_hosted_zone_output="$(
+    aws route53 create-hosted-zone \
+      --name="$test_domain." \
+      --caller-reference="test_$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+  )"
+
+  test_hosted_zone_id="$(
+    jq '.HostedZone.Id' <<< "$test_create_hosted_zone_output"
+  )"
+
+  test_name_servers="$(
+    jq -r '.DelegationSet.NameServers[]' <<< $test_create_hosted_zone_output
+  )"
+else
+  test_hosted_zone="$(
+    jq ".[] | select(.Name == \"$test_domain.\")" <<< "$test_hosted_zones"
+  )"
+
+  if [[ -n "$test_hosted_zone" ]]; then 
+      test_hosted_zone_id="$(jq '.Id' <<< "$test_hosted_zone")"
+  else
+    printf "error: unable to fetch the test hosted zone id\n" >&2
+    exit 1
+  fi
+fi
 
 printf "assuming the OrganizationAccountAccessRole for the prod account..\n"
 
@@ -65,14 +89,14 @@ aws sts assume-role \
 
 printf "checking whether a hosted zone exists in the prod account..\n"
 
-prod_hosted_zones=$(
+prod_hosted_zones="$(
   aws route53 list-hosted-zones \
     --max-items=1 \
     --output=json \
     --query='HostedZones'
-)
+)"
 
-prod_hosted_zones_count=$(jq 'length' <<< "$prod_hosted_zones")
+prod_hosted_zones_count="$(jq 'length' <<< "$prod_hosted_zones")"
 
 if [[ "$prod_hosted_zone_count" == "0" ]]; then
   printf "creating a hosted zone for the prod account..\n"
