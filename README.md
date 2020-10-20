@@ -4,7 +4,6 @@ everything related to nugget's infrastructure
 
 ## todo
 
-* complete dns setup bash script
 * recheck how to add a spf record to the domains
 
 ## stacks
@@ -45,8 +44,6 @@ the `test` and `prod` aws accounts exhibit identical `site` stacks.
 ### `mail`
 
 a bike-shed domain mail stack as a proxy between route53 and gmail.
-
-**TODO** the `test` and `prod` aws accounts **shall** exhibit identical `mail` stacks.
 
 ### cd
 
